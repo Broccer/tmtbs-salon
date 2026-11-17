@@ -71,7 +71,9 @@ public static class WebGLBuild
         var list = so.FindProperty("m_AlwaysIncludedShaders");
         var have = new HashSet<UnityEngine.Object>();
         for (int i = 0; i < list.arraySize; i++) have.Add(list.GetArrayElementAtIndex(i).objectReferenceValue);
-        foreach (var sh in new[] { standard, text, unlit, unlitColor })
+        // Standard burada YOK: tüm türevleriyle eklenince unity_builtin_extra yazılamıyor.
+        // Resources/SalonBase.mat onu gereken türevlerle derlemeye zaten sokuyor.
+        foreach (var sh in new[] { text, unlit, unlitColor })
         {
             if (sh == null || have.Contains(sh)) continue;
             list.InsertArrayElementAtIndex(list.arraySize);
