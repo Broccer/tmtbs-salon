@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
@@ -65,22 +64,10 @@ public static class WebGLBuild
         MakeMaterial("Assets/Resources/SalonUnlit.mat", unlit);
         MakeMaterial("Assets/Resources/SalonGlow.mat", unlitColor);
 
-        var gs = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>("ProjectSettings/GraphicsSettings.asset");
-        if (gs == null) return;
-        var so = new SerializedObject(gs);
-        var list = so.FindProperty("m_AlwaysIncludedShaders");
-        var have = new HashSet<UnityEngine.Object>();
-        for (int i = 0; i < list.arraySize; i++) have.Add(list.GetArrayElementAtIndex(i).objectReferenceValue);
-        // Standard burada YOK: tüm türevleriyle eklenince unity_builtin_extra yazılamıyor.
-        // Resources/SalonBase.mat onu gereken türevlerle derlemeye zaten sokuyor.
-        foreach (var sh in new[] { text, unlit, unlitColor })
-        {
-            if (sh == null || have.Contains(sh)) continue;
-            list.InsertArrayElementAtIndex(list.arraySize);
-            list.GetArrayElementAtIndex(list.arraySize - 1).objectReferenceValue = sh;
-        }
-        so.ApplyModifiedProperties();
-        AssetDatabase.SaveAssets();
+        MakeMaterial("Assets/Resources/SalonText.mat", text);
+        // Always-included listesine DOKUNMUYORUZ: gömülü shader'lar oraya eklenince
+        // derlemeler unity_builtin_extra'yı yazamadı (m_LockCount assertion).
+        // Resources'taki malzemeler shader'ları derlemeye zaten sokuyor.
     }
 
     static void MakeMaterial(string path, Shader shader)
