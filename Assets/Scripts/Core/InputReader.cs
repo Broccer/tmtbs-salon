@@ -4,8 +4,9 @@ using UnityEngine.InputSystem;
 #endif
 
 /// <summary>
-/// Salon girdisi: WASD/Oklar yürü (A/D döner), Shift koş, E/Enter kürsüde işlem, Esc kapat.
-/// Gamepad: sol çubuk, A işlem, B kapat. UI açıkken (Blocked) hareket okunmaz.
+/// Girdi: WASD/Oklar yürü (A/D döner), Shift koş, E/Enter işlem, M/Tab cep menüsü, Esc kapat.
+/// Gamepad: sol çubuk, A işlem, B kapat. Telefonda TouchControls (joystick + düğmeler).
+/// UI açıkken (Blocked) hareket okunmaz.
 /// </summary>
 public static class InputReader
 {
@@ -36,6 +37,7 @@ public static class InputReader
         if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) v.x += 1f;
         if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) v.x -= 1f;
 #endif
+        if (TouchControls.Move.sqrMagnitude > v.sqrMagnitude) v = TouchControls.Move;
         if (v.sqrMagnitude < 0.04f) return Vector2.zero;
         return Vector2.ClampMagnitude(v, 1f);
     }
@@ -43,6 +45,7 @@ public static class InputReader
     public static bool Run()
     {
         if (Blocked) return false;
+        if (TouchControls.Run) return true;
 #if ENABLE_INPUT_SYSTEM
         var k = Keyboard.current;
         var g = Gamepad.current;
@@ -55,12 +58,26 @@ public static class InputReader
     public static bool InteractPressed()
     {
         if (Blocked) return false;
+        if (TouchControls.InteractDown) return true;
+        if (GUIUtility.keyboardControl != 0) return false; // bir yazı alanına yazılıyor
 #if ENABLE_INPUT_SYSTEM
         var k = Keyboard.current;
         var g = Gamepad.current;
         return (k != null && (k.eKey.wasPressedThisFrame || k.enterKey.wasPressedThisFrame)) || (g != null && g.buttonSouth.wasPressedThisFrame);
 #else
         return Input.GetKeyDown(KeyCode.E) || Input.GetKeyDown(KeyCode.Return);
+#endif
+    }
+
+    /// <summary>M ya da Tab: cep telefonu menüsü.</summary>
+    public static bool MenuPressed()
+    {
+        if (GUIUtility.keyboardControl != 0) return false;
+#if ENABLE_INPUT_SYSTEM
+        var k = Keyboard.current;
+        return k != null && (k.mKey.wasPressedThisFrame || k.tabKey.wasPressedThisFrame);
+#else
+        return Input.GetKeyDown(KeyCode.M) || Input.GetKeyDown(KeyCode.Tab);
 #endif
     }
 
@@ -80,13 +97,13 @@ public static class InputReader
         screenPos = Vector2.zero;
         if (Blocked) return false;
 #if ENABLE_INPUT_SYSTEM
-        var m = Mouse.current;
-        if (m != null && m.leftButton.wasPressedThisFrame) { screenPos = m.position.ReadValue(); return true; }
         var t = Touchscreen.current;
-        if (t != null && t.primaryTouch.press.wasPressedThisFrame) { screenPos = t.primaryTouch.position.ReadValue(); return true; }
+        if (t != null && t.primaryTouch.press.wasPressedThisFrame) { screenPos = t.primaryTouch.position.ReadValue(); return !TouchControls.Owns(screenPos); }
+        var m = Mouse.current;
+        if (m != null && m.leftButton.wasPressedThisFrame) { screenPos = m.position.ReadValue(); return !TouchControls.Owns(screenPos); }
         return false;
 #else
-        if (Input.GetMouseButtonDown(0)) { screenPos = Input.mousePosition; return true; }
+        if (Input.GetMouseButtonDown(0)) { screenPos = Input.mousePosition; return !TouchControls.Owns(screenPos); }
         return false;
 #endif
     }

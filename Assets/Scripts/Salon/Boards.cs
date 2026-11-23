@@ -16,6 +16,11 @@ public class Boards : MonoBehaviour
     public TextMesh clockL, clockR;
     public TextMesh indexL, indexR;
     public TextMesh statusText;
+    // Dış cephe: endeks ve en çok yükselen/düşen 5 marka (0 = yükselen, 1 = düşen)
+    public TextMesh facadeIndex;
+    public TextMesh[] fNames = new TextMesh[2];
+    public TextMesh[] fPrices = new TextMesh[2];
+    public TextMesh[] fChanges = new TextMesh[2];
 
     float tickerX;
     float tickerWidth = 60f;
@@ -80,6 +85,43 @@ public class Boards : MonoBehaviour
         if (indexL) indexL.text = t;
         if (indexR) indexR.text = t;
         if (statusText && m != null) statusText.text = m.status;
+        RefreshFacade(list);
+    }
+
+    void RefreshFacade(System.Collections.Generic.List<Stock> list)
+    {
+        if (facadeIndex)
+        {
+            if (list != null && list.Count > 0)
+            {
+                double cap = list.Sum(s => Math.Max(1, s.marketCap));
+                double ch = list.Sum(s => s.change * Math.Max(1, s.marketCap)) / cap;
+                facadeIndex.text = $"TMTBS ENDEKS  <color={Fmt.ChangeColor(ch)}>{(ch > 0.05 ? "▲" : ch < -0.05 ? "▼" : "■")} {Fmt.Pct(ch)}</color>";
+            }
+            else facadeIndex.text = "TMTBS ENDEKS  —";
+        }
+        var up = list == null ? new System.Collections.Generic.List<Stock>() : list.OrderByDescending(s => s.change).Take(5).ToList();
+        var down = list == null ? new System.Collections.Generic.List<Stock>() : list.Where(s => !up.Contains(s)).OrderBy(s => s.change).Take(5).ToList();
+        FillFacade(0, up);
+        FillFacade(1, down);
+    }
+
+    void FillFacade(int p, System.Collections.Generic.List<Stock> rows)
+    {
+        var sbN = new StringBuilder();
+        var sbP = new StringBuilder();
+        var sbC = new StringBuilder();
+        for (int r = 0; r < 5; r++)
+        {
+            if (r >= rows.Count) { sbN.AppendLine(" "); sbP.AppendLine(" "); sbC.AppendLine(" "); continue; }
+            var s = rows[r];
+            sbN.AppendLine(s.name.Length > 10 ? s.name.Substring(0, 9) + "…" : s.name);
+            sbP.AppendLine(Fmt.N2(s.price));
+            sbC.AppendLine($"<color={Fmt.ChangeColor(s.change)}>{Fmt.Pct(s.change)}</color>");
+        }
+        if (fNames[p]) fNames[p].text = sbN.ToString();
+        if (fPrices[p]) fPrices[p].text = sbP.ToString();
+        if (fChanges[p]) fChanges[p].text = sbC.ToString();
     }
 
     void Update()
@@ -91,6 +133,11 @@ public class Boards : MonoBehaviour
         if (ticker)
         {
             // Gerçek genişlik: yazının sınırlarından
+            // Kayan bant yalnız salonun içindeyken görünür (dışarıdan duvarların yanından taşardı)
+            var cam = Camera.main;
+            bool inside = cam == null || (cam.transform.position.z > -SalonBuilder.HalfD && Mathf.Abs(cam.transform.position.x) < SalonBuilder.HalfW);
+            var tr = ticker.GetComponent<Renderer>();
+            if (tr && tr.enabled != inside) tr.enabled = inside;
             var r = ticker.GetComponent<Renderer>();
             if (r) tickerWidth = Mathf.Max(5f, r.bounds.size.x);
             tickerX -= Time.deltaTime * 2.2f;

@@ -2,42 +2,48 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Salonun akışı ve arayüzü: giriş (e-posta/şifre, şifre belirleme), demo gezinti,
-/// üst bilgi çubuğu, kürsüde al-sat paneli; piyasa yenilenince kürsüleri günceller
-/// ve sert hareketlerde bot borsacıları koşturur.
+/// Oyunun akışı ve arayüzü. Giriş → oyuncu evinde başlar → meydana çıkar → borsa binasına (seans salonu)
+/// ya da MTBS Bankası'na girer. Bankoda al-sat (limit/piyasa emri, defter, grafik, künye, emir iptali),
+/// veznede kredi çek / borç öde, cep menüsünde (M/Tab) TMTBS'nin bütün bölümleri.
+/// Telefonda dokunmatik kontroller, büyük yazılar, dokununca açılan yazı kutuları ve sürükleyerek kaydırma.
 /// </summary>
-public class SalonDirector : MonoBehaviour
+public partial class SalonDirector : MonoBehaviour
 {
     public Walker player;
     public ChaseCamera chase;
     public Boards boards;
 
-    enum View { Login, Forgot, Salon }
+    enum View { Login, Forgot, Game }
     View view = View.Login;
+    enum Panel { None, Trade, Bank, Phone }
+    Panel panel = Panel.None;
 
     const string EmailKey = "tmtbs_salon_email";
-    static readonly Vector3 Spawn = new Vector3(0, 0, -19f);
 
     string email = "", pass = "", code = "", newPass = "";
     string formMsg;
-    bool formErr;
-    bool busy;
-    bool codeSent;
-
-    Stock panel;
-    string qtyText = "1";
-    string tradeMsg;
-    bool tradeOk;
-    bool tradeBusy;
+    bool formErr, busy, codeSent;
 
     string banner;
     float bannerUntil;
     float scale = 1f;
-    GUIStyle h1, h2, label, small, box, btn, field, big;
+    float W, H;
+    GUIStyle h1, h2, label, small, box, btn, field, big, tab, tabOn, right;
+
+    // ================================================================ yaşam döngüsü
+
+    void PreviewPose()
+    {
+        player.StandUp();
+        player.SetFrozen(true);
+        player.transform.localScale = Vector3.one * 1.6f;
+        player.Teleport(new Vector3(0f, 0, -6f), Quaternion.Euler(0, 180f, 0));
+    }
 
     void Start()
     {
         InputReader.Blocked = true;
+        PreviewPose();
         try { email = PlayerPrefs.GetString(EmailKey, ""); } catch { }
         Market.I.Changed += OnMarket;
         Market.I.LoggedOut += OnLoggedOut;
@@ -47,7 +53,7 @@ public class SalonDirector : MonoBehaviour
         {
             busy = false;
             formMsg = null;
-            if (ok) EnterSalon();
+            if (ok) EnterGame();
         });
     }
 
@@ -58,25 +64,30 @@ public class SalonDirector : MonoBehaviour
         Market.I.LoggedOut -= OnLoggedOut;
     }
 
-    // ================================================================ akış
-
-    void EnterSalon()
+    void EnterGame()
     {
-        view = View.Salon;
+        view = View.Game;
+        panel = Panel.None;
         chase.overview = false;
         InputReader.Blocked = false;
         player.SetName(Market.I.userName);
-        player.Teleport(Spawn, Quaternion.identity);
+        player.transform.localScale = Vector3.one;
+        player.SetFrozen(false);
+        player.Teleport(Town.HomeSpawn, Town.HomeFacing);
+        chase.Snap();
         if (Bell.I) Bell.I.Ring();
-        Show(Market.I.mode == Market.Mode.Demo ? "Seans açıldı · Demo" : "Seans açıldı", 2.5f);
+        Show(Market.I.mode == Market.Mode.Demo ? "Evindesin · Demo" : "Evindesin", 2.5f);
+        Hint("Kapıdan çık: sağda MTBS Bankası, ileride Borsa MTBS binası.", 7f);
     }
 
     void OnLoggedOut()
     {
         view = View.Login;
+        panel = Panel.None;
         chase.overview = true;
-        panel = null;
+        chase.seated = false;
         InputReader.Blocked = true;
+        PreviewPose();
         formMsg = "Oturum kapandı. Tekrar giriş yapabilirsin.";
         formErr = false;
         foreach (var k in Kiosk.All) k.Bind(null);
@@ -84,10 +95,11 @@ public class SalonDirector : MonoBehaviour
 
     void OnMarket()
     {
-        var list = Market.I.stocks;
-        foreach (var k in Kiosk.All) k.Bind(k.slot < list.Count ? list[k.slot] : null);
+        var bySlot = new Dictionary<int, Stock>();
+        foreach (var s in Market.I.stocks) if (s.order >= 0) bySlot[s.order] = s;
+        foreach (var k in Kiosk.All) k.Bind(bySlot.TryGetValue(k.slot, out var st) ? st : null);
 
-        // Sert hareket: botlar o kürsüye koşar (en fazla 2 hisse)
+        // Sert hareket: botlar o bankoya koşar (en fazla 2 hisse)
         var movers = new List<(Kiosk k, double move)>();
         foreach (var k in Kiosk.All)
         {
@@ -108,16 +120,18 @@ public class SalonDirector : MonoBehaviour
 
     void Update()
     {
-        if (view != View.Salon) return;
+        if (view != View.Game) return;
+        chase.seated = player.SittingOn != null;
+        var near = player.Nearest;
+        TouchControls.InteractLabel = near != null ? near.buttonLabel : "İŞLEM";
 
-        if (panel != null)
+        if (panel != Panel.None)
         {
-            if (InputReader.BackPressed()) ClosePanel();
+            if (InputReader.BackPressed() && !HtmlInput.Open_) ClosePanel();
             return;
         }
-
-        if (InputReader.InteractPressed() && player.Nearest != null && player.Nearest.stock != null)
-            OpenPanel(player.Nearest.stock);
+        if (InputReader.MenuPressed()) { OpenPhone(false); return; }
+        if (InputReader.InteractPressed() && near != null) Use(near);
 
         if (InputReader.ClickPressed(out Vector2 sp) && GUIUtility.hotControl == 0 && Camera.main != null)
         {
@@ -127,72 +141,122 @@ public class SalonDirector : MonoBehaviour
                 var k = hit.collider.GetComponentInParent<Kiosk>();
                 if (k != null && k.stock != null)
                 {
-                    float d = (k.transform.position - player.transform.position).Flat().magnitude;
-                    if (d < 9f) OpenPanel(k.stock);
-                    else Show("Önce kürsüye yaklaş", 1.2f);
+                    float d = (k.StandPoint() - player.transform.position).Flat().magnitude;
+                    if (d < 7f) OpenTrade(k.stock);
+                    else Show("Önce bankoya yaklaş", 1.2f);
                 }
             }
         }
     }
 
-    void OpenPanel(Stock s)
+    void Use(Interactable it)
     {
-        panel = s;
-        qtyText = "1";
-        tradeMsg = null;
+        switch (it.kind)
+        {
+            case Interactable.Kind.Counter: if (it.counter != null && it.counter.stock != null) OpenTrade(it.counter.stock); break;
+            case Interactable.Kind.Teller: OpenBank(); break;
+            case Interactable.Kind.Computer: OpenPhone(true); break;
+            case Interactable.Kind.Seat:
+                player.Sit(it.seat);
+                Hint("Panoları izliyorsun. Kalkmak için yürü.", 4f);
+                break;
+        }
+    }
+
+    void OpenPanelCommon(Panel p)
+    {
+        panel = p;
         InputReader.Blocked = true;
-        Market.I.LoadDetail(s, null);
+        scroll = Vector2.zero;
         if (Bell.I) Bell.I.Tick();
     }
 
     void ClosePanel()
     {
-        panel = null;
+        panel = Panel.None;
+        trade = null;
         InputReader.Blocked = false;
+        GUIUtility.keyboardControl = 0;
     }
 
-    void Show(string text, float seconds)
+    /// <summary>Oyuncuyu bir yere ışınla (oturuyorsa kaldır).</summary>
+    void GoTo(Vector3 p, Quaternion r)
     {
-        banner = text;
-        bannerUntil = Time.time + seconds;
+        player.StandUp();
+        player.Teleport(p, r);
+        chase.Snap();
+        ClosePanel();
     }
 
-    // ================================================================ arayüz
+    void GoToCounter(Stock s)
+    {
+        foreach (var k in Kiosk.All)
+            if (k.stock == s) { GoTo(k.StandPoint(0), k.FacingCounter); Show(s.name, 1.5f); return; }
+        Show("Bu markanın bankosu yok", 1.5f);
+    }
+
+    void Show(string text, float seconds) { banner = text; bannerUntil = Time.time + seconds; }
+
+    string hint;
+    float hintUntil;
+    void Hint(string text, float seconds) { hint = text; hintUntil = Time.time + seconds; }
+
+    string Place()
+    {
+        Vector3 p = player.transform.position;
+        if (p.z > -SalonBuilder.HalfD) return "Seans salonu";
+        if (p.z > SeljukBuilding.ZF) return "Borsa MTBS · giriş";
+        if (Mathf.Abs(p.x - Town.HouseX) < 6.2f && Mathf.Abs(p.z - Town.Z) < 5.2f) return "Evin";
+        if (Mathf.Abs(p.x - Town.BankX) < 10.2f && Mathf.Abs(p.z - Town.Z) < 8.2f) return "MTBS Bankası";
+        return "Meydan";
+    }
+
+    // ================================================================ arayüz temeli
 
     void Styles()
     {
         if (h1 != null) return;
-        h1 = new GUIStyle(GUI.skin.label) { fontSize = 30, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, richText = true };
+        h1 = new GUIStyle(GUI.skin.label) { fontSize = 28, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, richText = true };
         h1.normal.textColor = new Color(1f, 0.82f, 0.35f);
-        h2 = new GUIStyle(GUI.skin.label) { fontSize = 22, fontStyle = FontStyle.Bold, richText = true };
+        h2 = new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold, richText = true, wordWrap = true };
         h2.normal.textColor = Color.white;
-        label = new GUIStyle(GUI.skin.label) { fontSize = 17, richText = true, wordWrap = true };
+        label = new GUIStyle(GUI.skin.label) { fontSize = 16, richText = true, wordWrap = true };
         label.normal.textColor = new Color(0.9f, 0.92f, 0.96f);
-        small = new GUIStyle(label) { fontSize = 14 };
+        right = new GUIStyle(label) { alignment = TextAnchor.UpperRight, wordWrap = false };
+        small = new GUIStyle(label) { fontSize = 13 };
         small.normal.textColor = new Color(0.7f, 0.74f, 0.82f);
-        box = new GUIStyle(GUI.skin.box) { padding = new RectOffset(16, 16, 12, 12) };
-        btn = new GUIStyle(GUI.skin.button) { fontSize = 18, fontStyle = FontStyle.Bold, richText = true };
-        field = new GUIStyle(GUI.skin.textField) { fontSize = 18, padding = new RectOffset(8, 8, 6, 6) };
-        big = new GUIStyle(h1) { fontSize = 46 };
+        var bg = new Texture2D(1, 1);
+        bg.SetPixel(0, 0, new Color(0.06f, 0.08f, 0.13f, 0.93f));
+        bg.Apply();
+        box = new GUIStyle(GUI.skin.box) { padding = new RectOffset(14, 14, 10, 10) };
+        box.normal.background = bg;
+        btn = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold, richText = true };
+        field = new GUIStyle(GUI.skin.textField) { fontSize = 17, padding = new RectOffset(8, 8, 6, 6) };
+        big = new GUIStyle(h1) { fontSize = 40 };
         big.normal.textColor = Color.white;
+        tab = new GUIStyle(GUI.skin.button) { fontSize = 14, richText = true };
+        tabOn = new GUIStyle(tab) { fontStyle = FontStyle.Bold };
+        tabOn.normal.textColor = tabOn.hover.textColor = new Color(1f, 0.84f, 0.3f);
     }
 
     void OnGUI()
     {
         Styles();
-        scale = Mathf.Clamp(Mathf.Min(Screen.width / 1280f, Screen.height / 720f), 0.6f, 2f);
+        float baseSize = HtmlInput.Touch ? 430f : 720f;
+        scale = Mathf.Clamp(Mathf.Min(Screen.width, Screen.height) / baseSize, 0.7f, 4f);
         GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
-        float W = Screen.width / scale, H = Screen.height / scale;
+        W = Screen.width / scale;
+        H = Screen.height / scale;
 
-        if (view == View.Login) DrawLogin(W, H);
-        else if (view == View.Forgot) DrawForgot(W, H);
-        else DrawSalon(W, H);
+        if (view == View.Login) DrawLogin();
+        else if (view == View.Forgot) DrawForgot();
+        else DrawGame();
 
         if (!string.IsNullOrEmpty(banner) && Time.time < bannerUntil)
-            GUI.Label(new Rect(0, H * 0.18f, W, 70), banner, big);
+            GUI.Label(new Rect(0, H * 0.2f, W, 60), banner, big);
     }
 
-    void Dim(float W, float H, float a)
+    void Dim(float a)
     {
         Color old = GUI.color;
         GUI.color = new Color(0, 0, 0, a);
@@ -200,52 +264,200 @@ public class SalonDirector : MonoBehaviour
         GUI.color = old;
     }
 
-    void FormMessage(Rect r)
+    Vector2 scroll;
+
+    /// <summary>Panel çerçevesi + kaydırma alanı (dokunmatikte sürükleyerek kaydırılır). Dönüş: iç genişlik.</summary>
+    float BeginPanel(Rect r)
     {
-        if (string.IsNullOrEmpty(formMsg)) return;
-        string c = formErr ? "#FF7A7A" : "#9FE0B0";
-        GUI.Label(r, $"<color={c}>{formMsg}</color>", small);
+        GUI.Box(r, GUIContent.none, box);
+        var e = Event.current;
+        if (e.type == EventType.MouseDrag && r.Contains(e.mousePosition) && HtmlInput.Touch)
+        {
+            scroll.y -= e.delta.y;
+            if (scroll.y < 0) scroll.y = 0;
+            e.Use();
+        }
+        GUILayout.BeginArea(new Rect(r.x + 12, r.y + 10, r.width - 24, r.height - 18));
+        scroll = GUILayout.BeginScrollView(scroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar);
+        return r.width - 24 - 18;
     }
 
-    void DrawLogin(float W, float H)
+    void EndPanel()
     {
-        Dim(W, H, 0.45f);
-        float w = 460, h = 470;
-        var r = new Rect((W - w) / 2, (H - h) / 2, w, h);
+        GUILayout.EndScrollView();
+        GUILayout.EndArea();
+    }
+
+    Rect PanelRect(float maxW)
+    {
+        float w = Mathf.Min(maxW, W - 16);
+        float top = W < 700 ? 8 : 70;
+        float h = H - top - (W < 700 ? 8 : 16);
+        float x = W < 700 ? (W - w) / 2 : W - w - 12;
+        return new Rect(x, top, w, h);
+    }
+
+    void Row(string k, string v)
+    {
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(k, small);
+        GUILayout.FlexibleSpace();
+        GUILayout.Label(v, right);
+        GUILayout.EndHorizontal();
+    }
+
+    void Title(string t)
+    {
+        GUILayout.Space(8);
+        GUILayout.Label("<color=#FFD54A><b>" + t + "</b></color>", label);
+    }
+
+    void Msg(string m, bool ok)
+    {
+        if (string.IsNullOrEmpty(m)) return;
+        GUILayout.Label($"<color={(ok ? "#5BE38A" : "#FF7A7A")}>{m}</color>", label);
+    }
+
+    static readonly Dictionary<string, string> KeyNames = new Dictionary<string, string>
+    {
+        { "pd_dd", "PD/DD" }, { "kurulus", "Kuruluş" }, { "halka_arz", "Halka arz" }, { "kurucu", "Kurucu" },
+        { "sermaye", "Sermaye" }, { "kasa", "Kasa" }, { "hissedar", "Hissedar" }, { "defter_degeri", "Defter değeri" },
+        { "piyasa_degeri", "Piyasa değeri" }, { "degisim", "Değişim" }, { "hacim", "Hacim" }, { "son_fiyat", "Son fiyat" },
+        { "adet", "Adet" }, { "fiyat", "Fiyat" }, { "tutar", "Tutar" }, { "tarih", "Tarih" }, { "oran", "Oran" },
+        { "seviye", "Seviye" }, { "uretim", "Üretim" }, { "kapasite", "Kapasite" }, { "isim", "Ad" }, { "ad", "Ad" },
+        { "net", "Net değer" }, { "net_deger", "Net değer" }, { "kazanc", "Kazanç" }, { "sira", "Sıra" },
+        { "para", "Nakit" }, { "hisse_degeri", "Hisse değeri" }, { "kademe", "Kademe" }, { "uyelik", "Üyelik" },
+        { "katilim", "Katılım" }, { "kayit", "Kayıt" }, { "toplam_adet", "Toplam adet" }, { "kalan_ay", "Kalan ay" },
+    };
+
+    static string Pretty(string key)
+    {
+        if (KeyNames.TryGetValue(key, out var n)) return n;
+        string s = key.Replace('_', ' ');
+        return s.Length > 0 ? char.ToUpper(s[0]) + s.Substring(1) : s;
+    }
+
+    static string Val(object v)
+    {
+        switch (v)
+        {
+            case null: return "—";
+            case bool b: return b ? "evet" : "hayır";
+            case double d: return System.Math.Abs(d - System.Math.Round(d)) < 1e-9 ? Fmt.N(d) : Fmt.N2(d);
+            case string s: return s.Length > 70 ? s.Substring(0, 69) + "…" : s;
+            case List<object> l: return l.Count + " kayıt";
+            default: return "…";
+        }
+    }
+
+    /// <summary>Sözlüğün düz alanlarını satır satır yazar (atlananlar hariç).</summary>
+    void Dump(Dictionary<string, object> d, params string[] skip)
+    {
+        var sk = new HashSet<string>(skip) { "id", "magaza_id", "logo_url", "ok", "user_id" };
+        foreach (var kv in d)
+        {
+            if (sk.Contains(kv.Key) || kv.Value is Dictionary<string, object>) continue;
+            if (kv.Value is List<object> l && l.Count > 0 && l[0] is Dictionary<string, object>) continue;
+            Row(Pretty(kv.Key), Val(kv.Value));
+        }
+    }
+
+    // ================================================================ giriş
+
+    void FormMessage()
+    {
+        if (string.IsNullOrEmpty(formMsg)) return;
+        GUILayout.Label($"<color={(formErr ? "#FF7A7A" : "#9FE0B0")}>{formMsg}</color>", small);
+    }
+
+    Look look;
+    bool lookLoaded;
+
+    void Pick(string title, string value, ref int idx, int count, ref bool changed)
+    {
+        GUILayout.BeginHorizontal();
+        GUILayout.Label(title, small, GUILayout.Width(70));
+        if (GUILayout.Button("◀", GUILayout.Width(34), GUILayout.Height(30))) { idx = (idx + count - 1) % count; changed = true; }
+        GUILayout.Label("<b>" + value + "</b>", new GUIStyle(label) { alignment = TextAnchor.MiddleCenter, wordWrap = false }, GUILayout.Width(110));
+        if (GUILayout.Button("▶", GUILayout.Width(34), GUILayout.Height(30))) { idx = (idx + 1) % count; changed = true; }
+        GUILayout.EndHorizontal();
+    }
+
+    /// <summary>Borsacını seç. Mixamo modelleri varsa model seçimi, yoksa ilkel gövde seçenekleri.</summary>
+    void DrawLookPicker(Rect r)
+    {
         GUI.Box(r, GUIContent.none, box);
-        GUILayout.BeginArea(new Rect(r.x + 24, r.y + 18, w - 48, h - 30));
+        GUILayout.BeginArea(new Rect(r.x + 14, r.y + 10, r.width - 28, r.height - 16));
+        GUILayout.Label("<b>Borsacını seç</b>", h2);
+        if (Characters.Available)
+        {
+            int m = Characters.SavedModel;
+            bool ch = false;
+            Pick("Karakter", Characters.Labels[m], ref m, Characters.Count, ref ch);
+            if (ch)
+            {
+                Characters.SavedModel = m;
+                Characters.Spawn(player.transform, m, false, Look.Load());
+            }
+            GUILayout.Label("Karakterin salonda, bankada ve evinde seni temsil eder.", small);
+        }
+        else
+        {
+            if (!lookLoaded) { look = Look.Load(); lookLoaded = true; }
+            bool ch = false;
+            GUILayout.BeginHorizontal();
+            if (GUILayout.Toggle(!look.female, " Erkek", GUILayout.Height(28)) && look.female) { look.female = false; ch = true; }
+            if (GUILayout.Toggle(look.female, " Kadın", GUILayout.Height(28)) && !look.female) { look.female = true; look.beard = false; ch = true; }
+            GUILayout.EndHorizontal();
+            Pick("Ten", Avatar.SkinNames[look.skin], ref look.skin, Avatar.Skins.Length, ref ch);
+            Pick("Saç", (look.female ? Avatar.FemaleHair : Avatar.MaleHair)[look.hairStyle], ref look.hairStyle, 4, ref ch);
+            Pick("Takım", Avatar.SuitNames[look.suit], ref look.suit, Avatar.Suits.Length, ref ch);
+            if (ch) { look.Save(); Avatar.Rebuild(player.transform, look); }
+        }
+        GUILayout.EndArea();
+    }
+
+    void DrawLogin()
+    {
+        Dim(0.35f);
+        bool narrow = W < 820;
+        float w = Mathf.Min(440, W - 16), h = 470;
+        var r = narrow ? new Rect((W - w) / 2, Mathf.Max(8, H - h - 160), w, h) : new Rect(W - w - 30, (H - h) / 2, w, h);
+        var pr = narrow ? new Rect((W - w) / 2, Mathf.Max(8, r.y - 140), w, 132) : new Rect(24, (H - 160) / 2, 300, 160);
+        if (narrow && r.y < 150) { pr = new Rect((W - w) / 2, r.yMax + 6, w, 132); }
+        DrawLookPicker(pr);
+
+        GUI.Box(r, GUIContent.none, box);
+        GUILayout.BeginArea(new Rect(r.x + 20, r.y + 14, w - 40, h - 24));
         GUILayout.Label("TRADE OF MTBS", h1);
-        GUILayout.Label("<b>Seans Salonu</b>", new GUIStyle(label) { alignment = TextAnchor.MiddleCenter });
-        GUILayout.Space(10);
+        GUILayout.Label("<b>Borsa MTBS · 3B</b>", new GUIStyle(label) { alignment = TextAnchor.MiddleCenter });
+        GUILayout.Space(8);
         GUILayout.Label("E-posta", small);
-        email = GUILayout.TextField(email, 120, field, GUILayout.Height(36));
+        email = HtmlInput.Field("eposta", email, "E-posta adresin", field, false, false, 120, GUILayout.Height(38));
         GUILayout.Label("Şifre", small);
-        GUI.SetNextControlName("sifre");
-        pass = GUILayout.PasswordField(pass, '•', 64, field, GUILayout.Height(36));
-        GUILayout.Space(10);
+        pass = HtmlInput.Field("sifre", pass, "Şifren", field, true, false, 64, GUILayout.Height(38));
+        GUILayout.Space(8);
 
         bool enter = Event.current.type == EventType.KeyDown && (Event.current.keyCode == KeyCode.Return || Event.current.keyCode == KeyCode.KeypadEnter);
         GUI.enabled = !busy;
         GUI.backgroundColor = new Color(0.35f, 0.6f, 1f);
-        if (GUILayout.Button(busy ? "Bekle…" : "Giriş yap", btn, GUILayout.Height(44)) || (enter && !busy && email.Length > 0 && pass.Length > 0))
+        if (GUILayout.Button(busy ? "Bekle…" : "Giriş yap", btn, GUILayout.Height(46)) || (enter && !busy && email.Length > 0 && pass.Length > 0))
             DoLogin();
         GUI.backgroundColor = Color.white;
-        GUILayout.Space(4);
-        if (GUILayout.Button("Şifremi unuttum / şifre belirle", GUILayout.Height(30)))
+        if (GUILayout.Button("Şifremi unuttum / şifre belirle", GUILayout.Height(34)))
         {
             view = View.Forgot;
             codeSent = false;
             formMsg = null;
         }
-        GUILayout.Space(6);
-        if (GUILayout.Button("Misafir olarak gez (demo, sanal veriler)", GUILayout.Height(34)))
+        GUILayout.Space(4);
+        if (GUILayout.Button("Misafir olarak gez (gerçek fiyatlar, sanal para)", GUILayout.Height(38)))
         {
             Market.I.StartDemo();
-            EnterSalon();
+            EnterGame();
         }
         GUI.enabled = true;
-        GUILayout.Space(6);
-        FormMessage(GUILayoutUtility.GetRect(w - 48, 40));
+        FormMessage();
         GUILayout.Label("Uygulamaya Google ya da Apple ile girdiysen şifren yoktur: \"Şifre belirle\" ile e-postana gelen kodla bir şifre koy.", small);
         GUILayout.EndArea();
     }
@@ -260,25 +472,25 @@ public class SalonDirector : MonoBehaviour
             busy = false;
             pass = "";
             if (err != null) { formMsg = err; formErr = true; return; }
-            EnterSalon();
+            EnterGame();
         });
     }
 
-    void DrawForgot(float W, float H)
+    void DrawForgot()
     {
-        Dim(W, H, 0.45f);
-        float w = 460, h = codeSent ? 470 : 330;
-        var r = new Rect((W - w) / 2, (H - h) / 2, w, h);
+        Dim(0.45f);
+        float w = Mathf.Min(440, W - 16), h = codeSent ? 480 : 340;
+        var r = new Rect((W - w) / 2, Mathf.Max(8, (H - h) / 2), w, h);
         GUI.Box(r, GUIContent.none, box);
-        GUILayout.BeginArea(new Rect(r.x + 24, r.y + 18, w - 48, h - 30));
+        GUILayout.BeginArea(new Rect(r.x + 20, r.y + 14, w - 40, h - 24));
         GUILayout.Label("Şifre belirle", h1);
         GUILayout.Label("E-posta", small);
-        email = GUILayout.TextField(email, 120, field, GUILayout.Height(36));
+        email = HtmlInput.Field("eposta2", email, "E-posta adresin", field, false, false, 120, GUILayout.Height(38));
         GUI.enabled = !busy;
         if (!codeSent)
         {
             GUILayout.Space(8);
-            if (GUILayout.Button(busy ? "Gönderiliyor…" : "Kod gönder", btn, GUILayout.Height(42)))
+            if (GUILayout.Button(busy ? "Gönderiliyor…" : "Kod gönder", btn, GUILayout.Height(44)))
             {
                 busy = true;
                 Market.I.SendResetCode(email, err =>
@@ -294,11 +506,11 @@ public class SalonDirector : MonoBehaviour
         else
         {
             GUILayout.Label("E-postadaki 6 haneli kod", small);
-            code = GUILayout.TextField(code, 6, field, GUILayout.Height(36));
+            code = HtmlInput.Field("kod", code, "6 haneli kod", field, false, true, 6, GUILayout.Height(38));
             GUILayout.Label("Yeni şifre", small);
-            newPass = GUILayout.PasswordField(newPass, '•', 64, field, GUILayout.Height(36));
+            newPass = HtmlInput.Field("yenisifre", newPass, "Yeni şifre", field, true, false, 64, GUILayout.Height(38));
             GUILayout.Space(8);
-            if (GUILayout.Button(busy ? "Bekle…" : "Kaydet ve gir", btn, GUILayout.Height(42)))
+            if (GUILayout.Button(busy ? "Bekle…" : "Kaydet ve gir", btn, GUILayout.Height(44)))
             {
                 busy = true;
                 Market.I.ResetPassword(email, code, newPass, err =>
@@ -306,151 +518,62 @@ public class SalonDirector : MonoBehaviour
                     busy = false;
                     newPass = "";
                     if (err != null) { formMsg = err; formErr = true; return; }
-                    EnterSalon();
+                    EnterGame();
                 });
             }
         }
         GUI.enabled = true;
         GUILayout.Space(6);
-        if (GUILayout.Button("Geri", GUILayout.Height(30))) { view = View.Login; formMsg = null; }
-        FormMessage(GUILayoutUtility.GetRect(w - 48, 44));
+        if (GUILayout.Button("Geri", GUILayout.Height(34))) { view = View.Login; formMsg = null; }
+        FormMessage();
         GUILayout.EndArea();
     }
 
-    void DrawSalon(float W, float H)
+    // ================================================================ oyun içi üst bilgi
+
+    void DrawGame()
     {
         var m = Market.I;
+        bool narrow = W < 700;
+        bool hudHidden = narrow && panel != Panel.None;
 
-        // Üst sol: hesap özeti
-        GUI.Box(new Rect(12, 12, 360, 112), GUIContent.none, box);
-        GUI.Label(new Rect(28, 18, 330, 28), $"<b>{m.userName}</b>", h2);
-        GUI.Label(new Rect(28, 50, 330, 24), $"Nakit  <b>{Fmt.Mls(m.cash)}</b>", label);
-        GUI.Label(new Rect(28, 72, 330, 24), $"Hisseler  <b>{Fmt.Mls(m.stockValue)}</b>", label);
-        GUI.Label(new Rect(28, 94, 330, 24), $"Net değer  <b><color=#FFD54A>{Fmt.Mls(m.net)}</color></b>", label);
-
-        // Üst sağ: kip + çıkış
-        string badge = m.mode == Market.Mode.Demo ? "<color=#FFB74D>DEMO</color>" : "<color=#5BE38A>CANLI</color>";
-        GUI.Box(new Rect(W - 262, 12, 250, 74), GUIContent.none, box);
-        GUI.Label(new Rect(W - 248, 18, 230, 24), $"<b>{badge}</b>  {m.status}", small);
-        if (GUI.Button(new Rect(W - 248, 46, 222, 30), m.mode == Market.Mode.Demo ? "Hesabınla giriş yap" : "Çıkış yap"))
+        if (!hudHidden)
         {
-            panel = null;
-            m.Logout();
+            float bw = Mathf.Min(300, W * 0.58f);
+            GUI.Box(new Rect(8, 8, bw, 92), GUIContent.none, box);
+            GUI.Label(new Rect(20, 12, bw - 20, 26), $"<b>{m.userName}</b>  <size=12>{(m.mode == Market.Mode.Demo ? "<color=#FFB74D>DEMO</color>" : "<color=#5BE38A>CANLI</color>")}</size>", h2);
+            GUI.Label(new Rect(20, 40, bw - 20, 22), $"Nakit <b>{Fmt.Mls(m.cash)}</b>", label);
+            GUI.Label(new Rect(20, 62, bw - 20, 22), $"Net <b><color=#FFD54A>{Fmt.Mls(m.net)}</color></b> · <size=12>{Place()}</size>", label);
+
+            float mw = narrow ? 96 : 150;
+            if (GUI.Button(new Rect(W - mw - 8, 8, mw, 44), narrow ? "☰ Menü" : "☰ Menü  (M)", btn)) OpenPhone(false);
+            if (!narrow) GUI.Label(new Rect(W - 330, 56, 322, 22), m.status, new GUIStyle(small) { alignment = TextAnchor.UpperRight });
         }
 
-        // Kürsü yakınında ipucu
-        if (panel == null && player.Nearest != null && player.Nearest.stock != null)
+        if (panel == Panel.None)
         {
-            var r = new Rect(W / 2 - 230, H - 120, 460, 46);
-            GUI.Box(r, GUIContent.none, box);
-            GUI.Label(r, $"<b>E</b> · <color=#FFD54A>{player.Nearest.stock.name}</color> kürsüsünde işlem yap",
-                new GUIStyle(label) { alignment = TextAnchor.MiddleCenter });
+            var near = player.Nearest;
+            if (near != null && !string.IsNullOrEmpty(near.prompt))
+            {
+                float pw = Mathf.Min(460, W - 16);
+                var r = HtmlInput.Touch ? new Rect((W - pw) / 2, H * 0.56f, pw, 48) : new Rect((W - pw) / 2, H - 112, pw, 48);
+                GUI.Box(r, GUIContent.none, box);
+                string key = HtmlInput.Touch ? near.buttonLabel : "E";
+                if (GUI.Button(new Rect(r.x + 4, r.y + 4, r.width - 8, r.height - 8), $"<b>{key}</b> · <color=#FFD54A>{near.prompt}</color>", new GUIStyle(label) { alignment = TextAnchor.MiddleCenter }))
+                    Use(near);
+            }
+            if (!string.IsNullOrEmpty(hint) && Time.time < hintUntil)
+            {
+                float hw = Mathf.Min(520, W - 16);
+                GUI.Label(new Rect((W - hw) / 2, 108, hw, 50), $"<b>{hint}</b>", new GUIStyle(label) { alignment = TextAnchor.UpperCenter });
+            }
+            if (!HtmlInput.Touch)
+                GUI.Label(new Rect(14, H - 30, W - 28, 26),
+                    "W/S yürü · A/D dön · Shift koş · E kullan (banko, vezne, sandalye, bilgisayar) · M menü · Esc kapat", small);
         }
 
-        GUI.Label(new Rect(14, H - 34, W - 28, 28),
-            "W/S yürü · A/D dön · Shift koş · E kürsüde işlem · Kürsüye tıklayarak da açabilirsin · Esc paneli kapat", small);
-
-        if (panel != null) DrawTradePanel(W, H);
-    }
-
-    void DrawTradePanel(float W, float H)
-    {
-        var m = Market.I;
-        var s = panel;
-        float w = 430, h = 560;
-        var r = new Rect(W - w - 16, Mathf.Max(96, (H - h) / 2), w, h);
-        GUI.Box(r, GUIContent.none, box);
-        GUILayout.BeginArea(new Rect(r.x + 18, r.y + 14, w - 36, h - 24));
-
-        GUILayout.Label($"<b>{s.name}</b>", h2);
-        GUILayout.Label($"<size=30><b>{Fmt.N2(s.price)}</b></size> MLS   <color={Fmt.ChangeColor(s.change)}><b>{Fmt.Pct(s.change)}</b></color>", label);
-        long sellable = m.mode == Market.Mode.Demo ? s.myQty : s.myFree;
-        string mine = s.myQty > 0
-            ? $"Portföyünde <b>{Fmt.N(s.myQty)}</b> adet · satılabilir <b>{Fmt.N(sellable)}</b> · ort. maliyet {Fmt.N2(s.myCost)}"
-            : "Portföyünde bu hisseden yok.";
-        GUILayout.Label(mine, small);
-        GUILayout.Space(6);
-
-        // Emir defteri
-        GUILayout.BeginHorizontal();
-        GUILayout.BeginVertical(GUILayout.Width((w - 46) / 2));
-        GUILayout.Label("<color=#5BE38A><b>Alış</b></color>  fiyat × adet", small);
-        BookRows(s.bids, s.detailLoaded);
-        GUILayout.EndVertical();
-        GUILayout.BeginVertical(GUILayout.Width((w - 46) / 2));
-        GUILayout.Label("<color=#FF7A7A><b>Satış</b></color>  fiyat × adet", small);
-        BookRows(s.asks, s.detailLoaded);
-        GUILayout.EndVertical();
-        GUILayout.EndHorizontal();
-        GUILayout.Space(8);
-
-        // Adet
-        long qty = ParseQty();
-        double buyPx = s.bestAsk > 0 ? s.bestAsk : s.price;
-        double sellPx = s.bestBid > 0 ? s.bestBid : s.price;
-        GUILayout.Label("Adet", small);
-        GUILayout.BeginHorizontal();
-        if (GUILayout.Button("-10", GUILayout.Width(48), GUILayout.Height(34))) qtyText = System.Math.Max(1, qty - 10).ToString();
-        if (GUILayout.Button("-1", GUILayout.Width(40), GUILayout.Height(34))) qtyText = System.Math.Max(1, qty - 1).ToString();
-        qtyText = GUILayout.TextField(qtyText, 9, field, GUILayout.Width(110), GUILayout.Height(34));
-        if (GUILayout.Button("+1", GUILayout.Width(40), GUILayout.Height(34))) qtyText = (qty + 1).ToString();
-        if (GUILayout.Button("+10", GUILayout.Width(48), GUILayout.Height(34))) qtyText = (qty + 10).ToString();
-        GUILayout.EndHorizontal();
-        GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Alınabilecek en çok", GUILayout.Height(28)) && buyPx > 0)
-            qtyText = System.Math.Max(1, (long)(m.cash / buyPx)).ToString();
-        if (GUILayout.Button("Elimdekinin tamamı", GUILayout.Height(28)) && sellable > 0)
-            qtyText = sellable.ToString();
-        GUILayout.EndHorizontal();
-        qty = ParseQty();
-        GUILayout.Label($"Alış ≈ <b>{Fmt.Mls(qty * buyPx)}</b>   ·   Satış ≈ <b>{Fmt.Mls(qty * sellPx)}</b>", small);
-        GUILayout.Space(6);
-
-        GUI.enabled = !tradeBusy && s.detailLoaded;
-        GUILayout.BeginHorizontal();
-        GUI.backgroundColor = new Color(0.3f, 0.85f, 0.45f);
-        if (GUILayout.Button($"AL · {Fmt.N2(buyPx)}", btn, GUILayout.Height(48))) Trade(true, qty);
-        GUI.backgroundColor = new Color(1f, 0.4f, 0.4f);
-        if (GUILayout.Button($"SAT · {Fmt.N2(sellPx)}", btn, GUILayout.Height(48))) Trade(false, qty);
-        GUI.backgroundColor = Color.white;
-        GUILayout.EndHorizontal();
-        GUI.enabled = true;
-
-        if (tradeBusy) GUILayout.Label("Emir gönderiliyor…", small);
-        else if (!string.IsNullOrEmpty(tradeMsg))
-            GUILayout.Label($"<color={(tradeOk ? "#5BE38A" : "#FF7A7A")}>{tradeMsg}</color>", label);
-        else
-            GUILayout.Label("Emir, karşı tarafın en iyi fiyatından verilir.", small);
-
-        GUILayout.FlexibleSpace();
-        if (GUILayout.Button("Kapat (Esc)", GUILayout.Height(32))) ClosePanel();
-        GUILayout.EndArea();
-    }
-
-    void BookRows(List<KeyValuePair<double, long>> rows, bool loaded)
-    {
-        if (!loaded) { GUILayout.Label("yükleniyor…", small); return; }
-        if (rows.Count == 0) { GUILayout.Label("—", small); return; }
-        for (int i = 0; i < rows.Count && i < 5; i++)
-            GUILayout.Label($"{Fmt.N2(rows[i].Key)} × {Fmt.N(rows[i].Value)}", label);
-    }
-
-    long ParseQty()
-    {
-        return long.TryParse(qtyText, out long q) && q > 0 ? q : 1;
-    }
-
-    void Trade(bool buy, long qty)
-    {
-        tradeBusy = true;
-        tradeMsg = null;
-        Market.I.PlaceOrder(panel, buy, qty, (msg, ok) =>
-        {
-            tradeBusy = false;
-            tradeMsg = msg;
-            tradeOk = ok;
-            if (ok && Bell.I) Bell.I.Tick();
-            if (ok && panel != null) Market.I.LoadDetail(panel, null);
-        });
+        if (panel == Panel.Trade) DrawTrade();
+        else if (panel == Panel.Bank) DrawBank();
+        else if (panel == Panel.Phone) DrawPhone();
     }
 }

@@ -18,6 +18,7 @@ public static class WebGLBuild
     {
         EnsureScene();
         EnsureShaders();
+        CharImport.Prepare(); // Mixamo karakter dokuları + animatör
 
         PlayerSettings.productName = "Trade of MTBS - Seans Salonu";
         PlayerSettings.companyName = "Bavsla Games";
@@ -26,6 +27,9 @@ public static class WebGLBuild
         PlayerSettings.WebGL.dataCaching = true;
         PlayerSettings.stripEngineCode = false;
         PlayerSettings.runInBackground = true;
+        // Telefon için kendi sayfa şablonumuz (tam ekran, dokunmatik, Türkçe yükleme ekranı)
+        if (System.IO.File.Exists("Assets/WebGLTemplates/Salon/index.html"))
+            PlayerSettings.WebGL.template = "PROJECT:Salon";
 
         string outPath = ArgValue("-customBuildPath") ?? "build/WebGL/WebGL";
         BuildReport report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
@@ -63,8 +67,6 @@ public static class WebGLBuild
         MakeMaterial("Assets/Resources/SalonBase.mat", standard);
         MakeMaterial("Assets/Resources/SalonUnlit.mat", unlit);
         MakeMaterial("Assets/Resources/SalonGlow.mat", unlitColor);
-
-        MakeMaterial("Assets/Resources/SalonText.mat", text);
         // Always-included listesine DOKUNMUYORUZ: gömülü shader'lar oraya eklenince
         // derlemeler unity_builtin_extra'yı yazamadı (m_LockCount assertion).
         // Resources'taki malzemeler shader'ları derlemeye zaten sokuyor.
@@ -73,7 +75,7 @@ public static class WebGLBuild
     static void MakeMaterial(string path, Shader shader)
     {
         if (shader == null || AssetDatabase.LoadAssetAtPath<Material>(path) != null) return;
-        AssetDatabase.CreateAsset(new Material(shader), path);
+        AssetDatabase.CreateAsset(new Material(shader) { enableInstancing = true }, path);
         AssetDatabase.SaveAssets();
     }
 

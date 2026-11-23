@@ -13,7 +13,13 @@ public static class Gfx
     {
         get
         {
-            if (font == null) font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (font == null)
+            {
+                font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                // Yerleşik yazı shader'ı her şeyin önünde çizer; derinlik denemeli olanı kullan.
+                var sh = Resources.Load<Shader>("Tmtbs_Text3D");
+                if (sh != null && font != null) font.material.shader = sh;
+            }
             return font;
         }
     }

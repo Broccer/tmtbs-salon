@@ -194,6 +194,18 @@ public static class J
 
     public static long L(object o, string key = null) => (long)System.Math.Round(D(o, key));
 
+    public static bool B(object o, string key = null)
+    {
+        if (key != null) o = Get(o, key);
+        switch (o)
+        {
+            case bool b: return b;
+            case double d: return d != 0;
+            case string s: return s == "1" || s.ToLowerInvariant() == "true";
+            default: return false;
+        }
+    }
+
     public static string S(object o, string key = null)
     {
         if (key != null) o = Get(o, key);

@@ -8,23 +8,29 @@ public class Stock
     public long id;
     public string name = "";
     public double price;
-    public double change;      // yüzde
+    public double change;      // yüzde (aylık)
     public double volume;
     public double marketCap;
     public double bestBid, bestAsk;
     public readonly List<KeyValuePair<double, long>> bids = new List<KeyValuePair<double, long>>();
     public readonly List<KeyValuePair<double, long>> asks = new List<KeyValuePair<double, long>>();
-    public long myQty;         // portföydeki adet
+    public long myQty;         // portföydeki adet (emirdekiler dahil)
     public long myFree;        // satışa konabilir adet
     public double myCost;      // ortalama maliyet
     public bool detailLoaded;
     public double prevPrice;   // son yenilemedeki fiyat (salonda hareket efekti için)
+    public string logoUrl = "";
+    public bool favorite;
+    public double minPrice, maxPrice; // günlük fiyat bandı (0 = sınırsız)
+    /// <summary>Ham detay (/tmtbs/hisse/{id}.borsa): benim.emirler, islemler, marka künyesi, bekleyen_hak…</summary>
+    public Dictionary<string, object> detail = new Dictionary<string, object>();
+    public int order = -1;     // salondaki banko sırası (ilk yüklemede sabitlenir)
 }
 
 /// <summary>
-/// Piyasa verisi. İki kip:
-///  - Canlı: Trade of MTBS hesabıyla giriş, gerçek fiyat/portföy, gerçek emir.
-///  - Demo: girişsiz gezinti; uydurma şirketler, fiyatlar rastgele yürür, para sanal.
+/// Piyasa verisi ve TMTBS sunucusunun bütün işlevleri. İki kip:
+///  - Canlı: Trade of MTBS hesabıyla giriş, gerçek fiyat/portföy, gerçek emir, kredi, sıralama…
+///  - Demo: girişsiz gezinti; gerçek fiyatlar (/tmtbs/vitrin), sanal para.
 /// </summary>
 public class Market : MonoBehaviour
 {
@@ -35,7 +41,12 @@ public class Market : MonoBehaviour
 
     public readonly List<Stock> stocks = new List<Stock>();
     public string userName = "";
+    public long userId;
     public double cash, stockValue, net;
+    public Dictionary<string, object> credit = new Dictionary<string, object>();   // kredi durumu (yoksa boş)
+    public List<object> rights = new List<object>();                               // bekleyen sermaye artırımı hakları
+    public List<object> portfolio = new List<object>();
+    public Dictionary<string, object> summary = new Dictionary<string, object>();  // portföy özeti
     public float lastRefresh = -999f;
     public string status = "";
     public event Action Changed;
@@ -43,14 +54,19 @@ public class Market : MonoBehaviour
 
     public float refreshSeconds = 12f;
     bool refreshing;
+    int nextOrder;
+
+    public bool Live => mode == Mode.Live;
 
     void Awake() { I = this; }
 
     void Update()
     {
         if (mode == Mode.None) return;
-        if (mode == Mode.Demo) { DemoTick(); return; }
-        if (!refreshing && Time.time - lastRefresh > refreshSeconds) Refresh();
+        if (!refreshing && Time.time - lastRefresh > refreshSeconds)
+        {
+            if (mode == Mode.Demo) DemoRefresh(); else Refresh();
+        }
     }
 
     // ================================================================ giriş
@@ -60,6 +76,18 @@ public class Market : MonoBehaviour
         Api.I.Post("/tmtbs/auth/giris", new Dictionary<string, object> { { "email", email.Trim() }, { "sifre", pass }, { "cihaz", "salon-webgl" } },
             r => { AcceptLogin(r); done(null); },
             (m, c) => done(m));
+    }
+
+    public void Register(string name, string email, string pass, Action<string> done)
+    {
+        Api.I.Post("/tmtbs/auth/kayit", new Dictionary<string, object> { { "adsoyad", name.Trim() }, { "email", email.Trim() }, { "sifre", pass } },
+            r => done(null), (m, c) => done(m));
+    }
+
+    public void Verify(string email, string code, Action<string> done)
+    {
+        Api.I.Post("/tmtbs/auth/dogrula", new Dictionary<string, object> { { "email", email.Trim() }, { "kod", code.Trim() }, { "cihaz", "salon-webgl" } },
+            r => { AcceptLogin(r); done(null); }, (m, c) => done(m));
     }
 
     public void SendResetCode(string email, Action<string> done)
@@ -80,6 +108,7 @@ public class Market : MonoBehaviour
     {
         Api.I.SetToken(J.S(r, "token"));
         userName = J.S(J.O(r, "user"), "adsoyad");
+        userId = J.L(J.O(r, "user"), "id");
         StartLive();
     }
 
@@ -90,6 +119,7 @@ public class Market : MonoBehaviour
         Api.I.Get("/tmtbs/ben", r =>
         {
             userName = J.S(J.O(r, "user"), "adsoyad");
+            userId = J.L(J.O(r, "user"), "id");
             StartLive();
             done(true);
         }, (m, c) =>
@@ -105,6 +135,10 @@ public class Market : MonoBehaviour
         Api.I.SetToken("");
         mode = Mode.None;
         stocks.Clear();
+        credit.Clear();
+        rights.Clear();
+        portfolio.Clear();
+        nextOrder = 0;
         Changed?.Invoke();
         LoggedOut?.Invoke();
     }
@@ -113,6 +147,7 @@ public class Market : MonoBehaviour
     {
         mode = Mode.Live;
         stocks.Clear();
+        nextOrder = 0;
         status = "Canlı veriler yükleniyor…";
         Refresh();
     }
@@ -127,6 +162,7 @@ public class Market : MonoBehaviour
         Api.I.Get("/tmtbs/piyasa", r =>
         {
             ApplyList(J.A(r, "liste"));
+            ApplyFavorites(J.A(r, "favoriler"));
             Api.I.Get("/tmtbs/durum", d =>
             {
                 ApplyStatus(d);
@@ -135,6 +171,13 @@ public class Market : MonoBehaviour
                 Changed?.Invoke();
             }, OnFail);
         }, OnFail);
+    }
+
+    /// <summary>Yalnız hesap durumunu yeniler (nakit, kredi, portföy).</summary>
+    public void RefreshStatus(Action done = null)
+    {
+        if (mode != Mode.Live) { done?.Invoke(); return; }
+        Api.I.Get("/tmtbs/durum", d => { ApplyStatus(d); Changed?.Invoke(); done?.Invoke(); }, (m, c) => done?.Invoke());
     }
 
     void OnFail(string msg, long code)
@@ -166,10 +209,22 @@ public class Market : MonoBehaviour
             s.change = J.D(o, "degisim");
             s.volume = J.D(o, "hacim");
             s.marketCap = J.D(o, "piyasa_degeri");
+            s.logoUrl = J.S(o, "logo_url");
+            s.bestBid = J.D(o, "en_iyi_alis");
+            s.bestAsk = J.D(o, "en_iyi_satis");
             if (s.prevPrice <= 0) s.prevPrice = s.price;
         }
         stocks.RemoveAll(s => !seen.Contains(s.id));
         stocks.Sort((a, b) => b.marketCap.CompareTo(a.marketCap));
+        // Banko sırası ilk gelişte piyasa değerine göre verilir, sonra sabit kalır (yeni marka sona eklenir)
+        foreach (var s in stocks) if (s.order < 0) s.order = nextOrder++;
+    }
+
+    void ApplyFavorites(List<object> favs)
+    {
+        if (favs == null) return;
+        var set = new HashSet<long>(favs.Select(f => J.L(f)));
+        foreach (var s in stocks) s.favorite = set.Contains(s.id);
     }
 
     void ApplyStatus(Dictionary<string, object> d)
@@ -177,10 +232,17 @@ public class Market : MonoBehaviour
         cash = J.D(d, "para");
         stockValue = J.D(d, "hisse_degeri");
         net = J.D(d, "net_deger");
-        string n = J.S(J.O(d, "user"), "adsoyad");
+        var u = J.O(d, "user");
+        string n = J.S(u, "adsoyad");
         if (!string.IsNullOrEmpty(n)) userName = n;
+        if (J.L(u, "id") > 0) userId = J.L(u, "id");
+        credit = J.O(d, "kredi");
+        rights = J.A(d, "haklar");
+        portfolio = J.A(d, "portfoy");
+        summary = J.O(d, "ozet");
+        if (J.Get(d, "favoriler") != null) ApplyFavorites(J.A(d, "favoriler"));
         foreach (var s in stocks) { s.myQty = 0; s.myCost = 0; }
-        foreach (var p in J.A(d, "portfoy"))
+        foreach (var p in portfolio)
         {
             var s = Find(J.L(p, "id"));
             if (s == null) continue;
@@ -189,24 +251,28 @@ public class Market : MonoBehaviour
         }
     }
 
-    public void LoadDetail(Stock s, Action done)
+    public void LoadDetail(Stock s, Action done, long duel = 0)
     {
         if (mode == Mode.Demo) { DemoBook(s); done?.Invoke(); return; }
-        Api.I.Get("/tmtbs/hisse/" + s.id, r => { ApplyDetail(s, J.O(r, "borsa")); done?.Invoke(); },
+        Api.I.Get("/tmtbs/hisse/" + s.id + (duel > 0 ? "?duello=" + duel : ""), r => { ApplyDetail(s, J.O(r, "borsa")); done?.Invoke(); },
             (m, c) => { status = m; done?.Invoke(); });
     }
 
     void ApplyDetail(Stock s, Dictionary<string, object> b)
     {
         if (b.Count == 0) return;
+        s.detail = b;
         if (J.Get(b, "son_fiyat") != null) s.price = J.D(b, "son_fiyat");
         if (J.Get(b, "degisim") != null) s.change = J.D(b, "degisim");
         s.bestBid = J.D(b, "en_iyi_alis");
         s.bestAsk = J.D(b, "en_iyi_satis");
+        s.minPrice = J.D(b, "fiyat_min");
+        s.maxPrice = J.D(b, "fiyat_max");
         Fill(s.bids, J.A(b, "alislar"));
         Fill(s.asks, J.A(b, "satislar"));
         var benim = J.O(b, "benim");
         s.myFree = J.L(benim, "bos");
+        if (J.Get(benim, "adet") != null) s.myQty = J.L(benim, "adet");
         s.detailLoaded = true;
     }
 
@@ -217,18 +283,23 @@ public class Market : MonoBehaviour
             dst.Add(new KeyValuePair<double, long>(J.D(o, "fiyat"), J.L(o, "adet") > 0 ? J.L(o, "adet") : J.L(o, "kalan")));
     }
 
-    /// <summary>
-    /// Alışta en iyi satış fiyatından, satışta en iyi alış fiyatından emir verir (karşı taraf yoksa son fiyattan).
-    /// Sonuç metni done'a gelir.
-    /// </summary>
+    /// <summary>Piyasa emri: alışta en iyi satış, satışta en iyi alış fiyatından.</summary>
     public void PlaceOrder(Stock s, bool buy, long qty, Action<string, bool> done)
     {
         double px = buy ? (s.bestAsk > 0 ? s.bestAsk : s.price) : (s.bestBid > 0 ? s.bestBid : s.price);
+        PlaceLimit(s, buy, px, qty, 0, done);
+    }
+
+    /// <summary>Limit emir (fiyat kademeye oturtulur). duel &gt; 0 ise düello hesabıyla.</summary>
+    public void PlaceLimit(Stock s, bool buy, double px, long qty, long duel, Action<string, bool> done)
+    {
+        px = Tick.Snap(px);
         if (qty <= 0 || px <= 0) { done("Geçersiz adet ya da fiyat.", false); return; }
 
         if (mode == Mode.Demo) { DemoOrder(s, buy, qty, px, done); return; }
 
-        var body = new Dictionary<string, object> { { "yon", buy ? "al" : "sat" }, { "fiyat", (long)Math.Round(px) }, { "adet", qty } };
+        var body = new Dictionary<string, object> { { "yon", buy ? "al" : "sat" }, { "fiyat", px }, { "adet", qty } };
+        if (duel > 0) body["duello"] = duel;
         Api.I.Post("/tmtbs/hisse/" + s.id + "/emir", body, r =>
         {
             long done_ = J.L(r, "islem_adet");
@@ -242,6 +313,71 @@ public class Market : MonoBehaviour
         }, (m, c) => done(m, false));
     }
 
+    public void CancelOrder(long orderId, long duel, Action<string, bool> done)
+    {
+        if (mode != Mode.Live) { done("Demo kipinde emir defteri yok.", false); return; }
+        var body = new Dictionary<string, object>();
+        if (duel > 0) body["duello"] = duel;
+        Api.I.Post("/tmtbs/emir/" + orderId + "/iptal", body, r => { done("Emir iptal edildi.", true); lastRefresh = -999f; }, (m, c) => done(m, false));
+    }
+
+    public void ToggleFavorite(Stock s, Action<string> done)
+    {
+        if (mode != Mode.Live) { s.favorite = !s.favorite; done?.Invoke(null); return; }
+        Api.I.Post("/tmtbs/hisse/" + s.id + "/favori", null, r => { s.favorite = J.B(r, "favori"); Changed?.Invoke(); done?.Invoke(null); },
+            (m, c) => done?.Invoke(m));
+    }
+
+    // ================================================================ diğer ekranlar (canlı)
+
+    /// <summary>Genel GET: sonuç ya da hata metni.</summary>
+    public void Get(string path, Action<Dictionary<string, object>, string> done)
+    {
+        if (mode != Mode.Live) { done(null, "Bu bölüm hesabınla giriş yapınca görünür."); return; }
+        Api.I.Get(path, r => done(r, null), (m, c) => done(null, m));
+    }
+
+    public void Post(string path, Dictionary<string, object> body, Action<Dictionary<string, object>, string> done)
+    {
+        if (mode != Mode.Live) { done(null, "Bu işlem hesabınla giriş yapınca yapılabilir."); return; }
+        Api.I.Post(path, body, r => done(r, null), (m, c) => done(null, c == 404 ? "Bu işlem sunucuda henüz açık değil." : m));
+    }
+
+    public void CreditDraw(Action<string, bool> done)
+    {
+        Post("/tmtbs/kredi/cek", null, (r, err) =>
+        {
+            if (err != null) { done(err, false); return; }
+            credit = J.O(r, "kredi");
+            RefreshStatus();
+            done($"{Fmt.Mls(J.D(r, "yatan"))} hesabına yatırıldı.", true);
+        });
+    }
+
+    public void CreditPay(long amount, Action<string, bool> done)
+    {
+        Post("/tmtbs/kredi/ode", new Dictionary<string, object> { { "tutar", amount } }, (r, err) =>
+        {
+            if (err != null) { done(err, false); return; }
+            credit = J.O(r, "kredi");
+            RefreshStatus();
+            done($"{Fmt.Mls(J.D(r, "odenen"))} borcuna ödendi.", true);
+        });
+    }
+
+    public void AnswerRight(long rightId, bool join, long qty, Action<string, bool> done)
+    {
+        var body = new Dictionary<string, object> { { "katil", join } };
+        if (join && qty > 0) body["adet"] = qty;
+        Post("/tmtbs/artirim/" + rightId, body, (r, err) =>
+        {
+            if (err != null) { done(err, false); return; }
+            rights = J.A(r, "haklar");
+            RefreshStatus();
+            done(join ? "Sermaye artırımına katıldın." : "Haktan vazgeçtin.", true);
+        });
+    }
+
     public Stock Find(long id)
     {
         foreach (var s in stocks) if (s.id == id) return s;
@@ -250,61 +386,52 @@ public class Market : MonoBehaviour
 
     // ================================================================ demo
 
-    static readonly string[] DemoNames =
-    {
-        "Anadolu Çay", "Ege Tekstil", "Karadeniz Fındık", "Boğaz Lojistik", "Kapadokya Turizm", "Marmara Yazılım",
-        "Toros Çimento", "Fırat Enerji", "Trakya Süt", "Akdeniz Narenciye", "Van Halı", "Uludağ İçecek"
-    };
-    float nextDemoTick;
-    readonly Dictionary<long, double> demoOpen = new Dictionary<long, double>();
-
     public void StartDemo()
     {
         mode = Mode.Demo;
         stocks.Clear();
-        demoOpen.Clear();
+        nextOrder = 0;
         userName = "Misafir";
         cash = 100000;
-        var rnd = new System.Random(42);
-        for (int i = 0; i < DemoNames.Length; i++)
-        {
-            double p = Math.Round(5 + rnd.NextDouble() * 120);
-            var s = new Stock { id = i + 1, name = DemoNames[i], price = p, prevPrice = p, marketCap = p * (20000 + rnd.Next(80000)) };
-            demoOpen[s.id] = p;
-            stocks.Add(s);
-        }
-        stocks.Sort((a, b) => b.marketCap.CompareTo(a.marketCap));
+        credit = new Dictionary<string, object>();
         RecalcDemo();
-        status = "Demo · sanal para";
+        status = "Demo · gerçek fiyatlar yükleniyor…";
         Changed?.Invoke();
+        DemoRefresh();
     }
 
-    void DemoTick()
+    /// <summary>Demo kipi de markaları ve fiyatları sunucudaki gerçek borsadan alır (girişsiz /tmtbs/vitrin); yalnız para ve emirler sanaldır.</summary>
+    void DemoRefresh()
     {
-        if (Time.time < nextDemoTick) return;
-        nextDemoTick = Time.time + 2.5f;
-        foreach (var s in stocks)
+        if (refreshing) return;
+        refreshing = true;
+        lastRefresh = Time.time;
+        Api.I.Get("/tmtbs/vitrin", r =>
         {
-            s.prevPrice = s.price;
-            double step = UnityEngine.Random.Range(-0.025f, 0.026f);
-            if (UnityEngine.Random.value < 0.04f) step *= 4f; // ara sıra sert hareket
-            s.price = Math.Max(1, Math.Round(s.price * (1 + step)));
-            s.change = (s.price / demoOpen[s.id] - 1) * 100.0;
-            s.volume += UnityEngine.Random.Range(0, 400) * s.price;
-            s.marketCap = s.marketCap * (s.price / Math.Max(1, s.prevPrice));
-        }
-        RecalcDemo();
-        Changed?.Invoke();
+            var favs = stocks.Where(x => x.favorite).Select(x => x.id).ToList();
+            ApplyList(J.A(r, "liste"));
+            foreach (var s in stocks) s.favorite = favs.Contains(s.id);
+            refreshing = false;
+            RecalcDemo();
+            status = "Demo · gerçek fiyatlar · sanal para · " + DateTime.Now.ToString("HH:mm:ss");
+            Changed?.Invoke();
+        }, (m, c) =>
+        {
+            refreshing = false;
+            status = "Demo · bağlantı sorunu: " + m;
+            Changed?.Invoke();
+        });
     }
 
     void DemoBook(Stock s)
     {
         s.bids.Clear();
         s.asks.Clear();
+        double step = Tick.Step(s.price);
         for (int i = 1; i <= 5; i++)
         {
-            s.bids.Add(new KeyValuePair<double, long>(Math.Max(1, s.price - i), UnityEngine.Random.Range(10, 900)));
-            s.asks.Add(new KeyValuePair<double, long>(s.price + i - 1, UnityEngine.Random.Range(10, 900)));
+            s.bids.Add(new KeyValuePair<double, long>(Math.Max(step, Tick.Snap(s.price - i * step)), UnityEngine.Random.Range(10, 900)));
+            s.asks.Add(new KeyValuePair<double, long>(Tick.Snap(s.price + (i - 1) * step), UnityEngine.Random.Range(10, 900)));
         }
         s.bestBid = s.bids[0].Key;
         s.bestAsk = s.asks[0].Key;
@@ -338,5 +465,34 @@ public class Market : MonoBehaviour
     {
         stockValue = stocks.Sum(x => x.myQty * x.price);
         net = cash + stockValue;
+        portfolio = stocks.Where(x => x.myQty > 0).Select(x => (object)new Dictionary<string, object>
+        {
+            { "id", (double)x.id }, { "isim", x.name }, { "adet", (double)x.myQty }, { "son_fiyat", x.price },
+            { "deger", x.myQty * x.price }, { "ort_maliyet", x.myCost }, { "kz", x.myQty * (x.price - x.myCost) },
+            { "kz_yuzde", x.myCost > 0 ? (x.price - x.myCost) * 100 / x.myCost : 0 },
+        }).ToList();
+    }
+}
+
+/// <summary>Borsa fiyat kademesi: &lt;10 → 0,1 · &lt;50 → 0,5 · &lt;100 → 1 · &lt;500 → 5 · ≥500 → 10.</summary>
+public static class Tick
+{
+    public static double Step(double p) => p < 10 ? 0.1 : p < 50 ? 0.5 : p < 100 ? 1 : p < 500 ? 5 : 10;
+
+    public static double Snap(double p)
+    {
+        if (p <= 0) return 0;
+        double s = Step(p);
+        double v = Math.Round(Math.Round(p / s) * s, 1);
+        return Math.Max(0.1, v);
+    }
+
+    public static double Up(double p) => Snap(Snap(p) + Step(Snap(p)));
+
+    public static double Down(double p)
+    {
+        double q = Snap(p);
+        double s = Step(q - 1e-9);
+        return Math.Max(0.1, Snap(q - s));
     }
 }

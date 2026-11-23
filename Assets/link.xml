@@ -5,6 +5,8 @@
   <assembly fullname="UnityEngine.UnityWebRequestModule" preserve="all"/>
   <assembly fullname="UnityEngine.AudioModule" preserve="all"/>
   <assembly fullname="UnityEngine.IMGUIModule" preserve="all"/>
+  <assembly fullname="UnityEngine.AnimationModule" preserve="all"/>
+  <assembly fullname="UnityEngine.ImageConversionModule" preserve="all"/>
   <assembly fullname="UnityEngine.CoreModule">
     <type fullname="UnityEngine.MeshFilter" preserve="all"/>
     <type fullname="UnityEngine.MeshRenderer" preserve="all"/>
