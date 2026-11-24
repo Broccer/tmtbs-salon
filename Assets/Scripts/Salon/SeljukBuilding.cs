@@ -95,6 +95,8 @@ public static class SeljukBuilding
 
         // Giriş bloğunun dış yan duvarları ve çatısı (içi kapalı; yalnız koridor kullanılır)
         float zc = (Z0 + ZF) / 2f;
+        // Koridorun zemini: salon zemini ile meydan arasındaki boşluğu kapatır (yoksa oyuncu düşer)
+        Gfx.Box("Koridor_Zemin", t, new Vector3(0, -0.503f, zc), new Vector3(hw * 2f, 1f, CorridorLen + 3f), Gfx.Lit(new Color(0.42f, 0.37f, 0.30f), 0.2f), true);
         foreach (int s in new[] { -1, 1 })
             Gfx.Box("Blok_Yan", t, new Vector3(s * (hw - 0.25f), FH / 2f, zc), new Vector3(0.5f, FH, CorridorLen), stone, true);
         Gfx.Box("Blok_Cati", t, new Vector3(0, FH + 0.25f, zc), new Vector3(hw * 2f, 0.5f, CorridorLen + 1f), stoneDark);
