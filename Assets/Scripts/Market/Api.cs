@@ -6,12 +6,12 @@ using UnityEngine;
 using UnityEngine.Networking;
 
 /// <summary>
-/// Trade of MTBS sunucusu (/tmtbs/*). Jeton cihazda (WebGL'de tarayıcı deposu) saklanır.
+/// Müteşebbis oyun sunucusu (Müteşebbis hesabı). Jeton cihazda (WebGL'de tarayıcı deposu) saklanır.
 /// </summary>
 public class Api : MonoBehaviour
 {
     public const string BaseUrl = "https://mutesebbis.tr/api/v1/game";
-    const string TokenKey = "tmtbs_salon_token";
+    const string TokenKey = "mutesebbis_dunya_token";
 
     public static Api I { get; private set; }
 

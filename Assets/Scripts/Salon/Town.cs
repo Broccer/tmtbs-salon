@@ -11,11 +11,15 @@ public static class Town
     public static float Z => SeljukBuilding.CrossZ;
 
     /// <summary>Oyuncunun evde başladığı yer (kapıya bakar).</summary>
-    public static Vector3 HomeSpawn => new Vector3(HouseX - 1.5f, 0, Z + 1.5f);
-    public static Quaternion HomeFacing => Quaternion.LookRotation(Vector3.right);
+    public const float PartitionX = HouseX - 1f;
+    /// <summary>Oyuncu yatağının yanında uyanır (kuzeye, oda kapısına doğru bakar).</summary>
+    public static Vector3 HomeSpawn => new Vector3(HouseX - 6.9f, 0, Z - 3.6f);
+    public static Quaternion HomeFacing => Quaternion.LookRotation(new Vector3(0.5f, 0, 1f));
+    public static Transform Father;
+    public static TextMesh LevelSign;
     /// <summary>Bankanın kapısının önü (dışarıda).</summary>
     public static Vector3 BankDoorOutside => new Vector3(BankX - 12f, 0, Z);
-    public static Vector3 HouseDoorOutside => new Vector3(HouseX + 8f, 0, Z);
+    public static Vector3 HouseDoorOutside => new Vector3(HouseX + 13f, 0, Z);
 
     static readonly Color Gold = new Color(1f, 0.80f, 0.30f);
     static readonly Color Panel = new Color(0.03f, 0.04f, 0.06f);
@@ -35,7 +39,7 @@ public static class Town
     {
         var stone = Gfx.Lit(new Color(0.62f, 0.58f, 0.52f), 0.15f);
         var edge = Gfx.Lit(new Color(0.36f, 0.33f, 0.30f), 0.1f);
-        float hx = HouseX + 6f, bx = BankX - 10f;
+        float hx = HouseX + 11f, bx = BankX - 10f;
         // Halıdan eve
         float l1 = -2.6f - hx;
         Gfx.Box("Yol_Ev", t, new Vector3(hx + l1 / 2f, 0.004f, Z), new Vector3(l1, 0.01f, 3f), stone);
@@ -53,12 +57,12 @@ public static class Town
         post.position = new Vector3(3.6f, 0, Z + 2.6f);
         Gfx.Box("Direk", post, new Vector3(0, 1.3f, 0), new Vector3(0.12f, 2.6f, 0.12f), Gfx.Lit(new Color(0.2f, 0.18f, 0.16f), 0.3f));
         Gfx.Box("Levha", post, new Vector3(0, 2.25f, 0), new Vector3(2.6f, 0.9f, 0.06f), Gfx.Lit(Panel, 0.8f));
-        string txt = "<color=#FFD54A>↑ BORSA MTBS</color>\n← EV      BANKA →";
+        string txt = "<color=#FFD54A>↑ BORSA MTBS</color>\n← EV      BANKA →\n↓ ŞEHİR · OTOBÜS";
         Gfx.Text("Yazi_On", post, new Vector3(0, 2.25f, -0.04f), Quaternion.identity, txt, 0.22f, Color.white);
         Gfx.Text("Yazi_Arka", post, new Vector3(0, 2.25f, 0.04f), Quaternion.Euler(0, 180f, 0), "<color=#FFD54A>↓ BORSA MTBS</color>\n← BANKA      EV →", 0.22f, Color.white);
 
         // Yol fenerleri
-        foreach (float x in new[] { HouseX + 10f, HouseX + 18f, BankX - 14f, BankX - 22f })
+        foreach (float x in new[] { HouseX + 15f, HouseX + 21f, BankX - 14f, BankX - 22f })
             foreach (int s in new[] { -1, 1 })
             {
                 Gfx.Prim(PrimitiveType.Cylinder, "Direk", t, new Vector3(x, 1.4f, Z + s * 2.4f), new Vector3(0.14f, 1.4f, 0.14f), Gfx.Lit(new Color(0.15f, 0.16f, 0.2f), 0.6f), false);
@@ -99,60 +103,97 @@ public static class Town
 
     // ================================================================ ev
 
+    /// <summary>İki odalı ev: batıda oyuncunun odası (yatak, bilgisayar), doğuda salon (anne, baba, mutfak). Kapı doğuda.</summary>
     static void BuildHouse(Transform root)
     {
         var t = new GameObject("Ev").transform;
         t.SetParent(root, false);
         var c = new Vector3(HouseX, 0, Z);
-        float sx = 12f, sz = 10f, h = 4.2f;
+        float sx = 22f, sz = 12f, h = 4.2f;
         var wall = Gfx.Lit(new Color(0.86f, 0.80f, 0.70f), 0.1f);
         var wood = Gfx.Lit(new Color(0.45f, 0.30f, 0.18f), 0.4f);
         var roof = Gfx.Lit(new Color(0.55f, 0.22f, 0.16f), 0.2f);
         Room(t, "Ev", c, sx, sz, h, 1, 2.4f, 2.8f, wall, wood, Gfx.Lit(new Color(0.9f, 0.88f, 0.84f), 0.1f));
 
-        // Kiremit çatı (iki eğimli yüzey)
         foreach (int s in new[] { -1, 1 })
         {
-            var r = Gfx.Box("Cati", t, new Vector3(c.x, h + 1.55f, c.z + s * 2.75f), new Vector3(sx + 1.6f, 0.25f, 6.6f), roof);
+            var r = Gfx.Box("Cati", t, new Vector3(c.x, h + 1.75f, c.z + s * 3.25f), new Vector3(sx + 1.6f, 0.25f, 7.6f), roof);
             r.transform.localRotation = Quaternion.Euler(s * 28f, 0, 0);
         }
-        // Kapı söveleri ve tabela
         float dx = c.x + sx / 2f + 0.22f;
         Gfx.Box("Sove", t, new Vector3(dx, 1.4f, c.z - 1.3f), new Vector3(0.1f, 2.8f, 0.15f), wood);
         Gfx.Box("Sove", t, new Vector3(dx, 1.4f, c.z + 1.3f), new Vector3(0.1f, 2.8f, 0.15f), wood);
         Gfx.Box("Sove", t, new Vector3(dx, 2.85f, c.z), new Vector3(0.1f, 0.15f, 2.75f), wood);
         Gfx.Box("Tabela", t, new Vector3(dx + 0.02f, 3.5f, c.z), new Vector3(0.06f, 0.6f, 2.6f), Gfx.Lit(Panel, 0.8f));
-        Gfx.Text("Tabela_Yazi", t, new Vector3(dx + 0.07f, 3.5f, c.z), Quaternion.LookRotation(Vector3.left), "EVİM", 0.36f, Gold);
-        // Pencereler (dışarıdan parlayan)
+        Gfx.Text("Tabela_Yazi", t, new Vector3(dx + 0.07f, 3.5f, c.z), Quaternion.LookRotation(Vector3.left), "AİLE EVİ", 0.32f, Gold);
         foreach (int s in new[] { -1, 1 })
-            Gfx.Box("Pencere", t, new Vector3(dx + 0.01f, 1.8f, c.z + s * 3.2f), new Vector3(0.04f, 1.2f, 1.6f), Gfx.Glow(new Color(1f, 0.85f, 0.55f)));
+            Gfx.Box("Pencere", t, new Vector3(dx + 0.01f, 1.8f, c.z + s * 3.6f), new Vector3(0.04f, 1.2f, 1.6f), Gfx.Glow(new Color(1f, 0.85f, 0.55f)));
 
-        // İç: halı, kanepe, yatak, sehpa, çalışma masası + bilgisayar
-        Gfx.Box("Kilim", t, new Vector3(c.x + 1f, 0.025f, c.z), new Vector3(4f, 0.01f, 3f), Gfx.Lit(new Color(0.6f, 0.15f, 0.15f), 0.05f));
-        var sofa = Gfx.Lit(new Color(0.18f, 0.32f, 0.5f), 0.2f);
-        Gfx.Box("Kanepe", t, new Vector3(c.x + 1f, 0.3f, c.z + 4.2f), new Vector3(3.2f, 0.6f, 1f), sofa, true);
-        Gfx.Box("Kanepe_Arka", t, new Vector3(c.x + 1f, 0.75f, c.z + 4.6f), new Vector3(3.2f, 0.9f, 0.25f), sofa);
-        Gfx.Box("Sehpa", t, new Vector3(c.x + 1f, 0.25f, c.z + 2.6f), new Vector3(1.6f, 0.5f, 0.8f), wood, true);
-        Gfx.Box("Yatak", t, new Vector3(c.x - 3.5f, 0.3f, c.z - 3.4f), new Vector3(2.2f, 0.6f, 2.8f), Gfx.Lit(new Color(0.92f, 0.92f, 0.95f), 0.2f), true);
-        Gfx.Box("Yatak_Basi", t, new Vector3(c.x - 3.5f, 0.7f, c.z - 4.85f), new Vector3(2.3f, 1.4f, 0.15f), wood);
-        Gfx.Box("Yorgan", t, new Vector3(c.x - 3.5f, 0.62f, c.z - 2.9f), new Vector3(2.24f, 0.06f, 1.9f), Gfx.Lit(new Color(0.85f, 0.55f, 0.2f), 0.1f));
+        // Ara duvar (oda | salon), kapı boşluğu kuzeyde
+        float px = PartitionX, gz = c.z + 3.5f, gw = 1.6f, th = 0.2f;
+        float southLen = (gz - gw / 2f) - (c.z - sz / 2f), northLen = (c.z + sz / 2f) - (gz + gw / 2f);
+        Gfx.Box("Ara_Duvar", t, new Vector3(px, h / 2f, c.z - sz / 2f + southLen / 2f), new Vector3(th, h, southLen), wall, true);
+        Gfx.Box("Ara_Duvar", t, new Vector3(px, h / 2f, c.z + sz / 2f - northLen / 2f), new Vector3(th, h, northLen), wall, true);
+        Gfx.Box("Ara_Lento", t, new Vector3(px, 2.4f + (h - 2.4f) / 2f, gz), new Vector3(th, h - 2.4f, gw), wall, true);
 
-        // Çalışma masası batı duvarında, ekran doğuya (odaya) bakar
-        float mx = c.x - sx / 2f + 0.6f;
-        Gfx.Box("Masa", t, new Vector3(mx, 0.75f, c.z + 1.5f), new Vector3(1f, 0.06f, 2f), wood, true);
+        // ---- Oyuncunun odası (Müteşebbis ev seviyesi 1)
+        float bx = c.x - 8.5f, bz = c.z - sz / 2f + 1.55f;
+        Gfx.Box("Yatak", t, new Vector3(bx, 0.3f, bz), new Vector3(2.0f, 0.6f, 2.8f), Gfx.Lit(new Color(0.92f, 0.92f, 0.95f), 0.2f), true);
+        Gfx.Box("Yatak_Basi", t, new Vector3(bx, 0.7f, bz - 1.45f), new Vector3(2.1f, 1.4f, 0.12f), wood);
+        Gfx.Box("Yastik", t, new Vector3(bx, 0.66f, bz - 1.0f), new Vector3(1.4f, 0.14f, 0.5f), Gfx.Lit(Color.white, 0.2f));
+        Gfx.Box("Yorgan", t, new Vector3(bx, 0.62f, bz + 0.4f), new Vector3(2.04f, 0.06f, 1.9f), Gfx.Lit(new Color(0.2f, 0.45f, 0.75f), 0.1f));
+        Gfx.Box("Komodin", t, new Vector3(bx + 1.6f, 0.3f, bz - 1.1f), new Vector3(0.6f, 0.6f, 0.5f), wood, true);
+        Gfx.Prim(PrimitiveType.Sphere, "Abajur", t, new Vector3(bx + 1.6f, 0.85f, bz - 1.1f), Vector3.one * 0.35f, Gfx.Glow(new Color(1f, 0.85f, 0.5f)), false);
+        Gfx.Box("Dolap", t, new Vector3(c.x - 5f, 1.1f, c.z + sz / 2f - 0.4f), new Vector3(2.2f, 2.2f, 0.6f), wood, true);
+        Gfx.Box("Kilim", t, new Vector3(c.x - 6.5f, 0.025f, c.z + 0.5f), new Vector3(3f, 0.01f, 2.2f), Gfx.Lit(new Color(0.6f, 0.15f, 0.15f), 0.05f));
+        Gfx.Box("Poster", t, new Vector3(c.x - sx / 2f + 0.03f, 2.3f, c.z - 2f), new Vector3(0.03f, 1.2f, 0.9f), Gfx.Lit(new Color(0.1f, 0.5f, 0.55f), 0.1f));
+        // Oda seviyesi levhası (kuzey duvar, içeriden okunur)
+        Gfx.Box("Seviye_Levha", t, new Vector3(c.x - 8f, 2.6f, c.z + sz / 2f - 0.04f), new Vector3(3.2f, 0.9f, 0.04f), Gfx.Lit(Panel, 0.8f));
+        LevelSign = Gfx.Text("Seviye_Yazi", t, new Vector3(c.x - 8f, 2.6f, c.z + sz / 2f - 0.08f), Quaternion.identity, "EV SEVİYESİ 1\n<size=60>Odan</size>", 0.2f, Gold);
+
+        // Çalışma masası batı duvarında: bilgisayar = Müteşebbis cep menüsü
+        float mx = c.x - sx / 2f + 0.6f, mz = c.z + 2.2f;
+        Gfx.Box("Masa", t, new Vector3(mx, 0.75f, mz), new Vector3(1f, 0.06f, 2f), wood, true);
         foreach (int s in new[] { -1, 1 })
-            Gfx.Box("Masa_Ayak", t, new Vector3(mx, 0.37f, c.z + 1.5f + s * 0.9f), new Vector3(0.9f, 0.74f, 0.06f), wood);
-        Gfx.Box("Monitor", t, new Vector3(mx - 0.2f, 1.2f, c.z + 1.5f), new Vector3(0.05f, 0.6f, 1f), Gfx.Lit(Panel, 0.9f));
-        Gfx.Box("Monitor_Ekran", t, new Vector3(mx - 0.17f, 1.2f, c.z + 1.5f), new Vector3(0.01f, 0.52f, 0.92f), Gfx.Glow(new Color(0.2f, 0.6f, 0.9f)));
-        Gfx.Text("Monitor_Yazi", t, new Vector3(mx - 0.16f, 1.2f, c.z + 1.5f), Quaternion.LookRotation(Vector3.left), "BORSA MTBS\n<size=40>hesabım</size>", 0.09f, Color.white);
-        Gfx.Box("Klavye", t, new Vector3(mx + 0.15f, 0.79f, c.z + 1.5f), new Vector3(0.25f, 0.02f, 0.6f), Gfx.Lit(new Color(0.1f, 0.1f, 0.12f), 0.5f));
+            Gfx.Box("Masa_Ayak", t, new Vector3(mx, 0.37f, mz + s * 0.9f), new Vector3(0.9f, 0.74f, 0.06f), wood);
+        Gfx.Box("Monitor", t, new Vector3(mx - 0.2f, 1.2f, mz), new Vector3(0.05f, 0.6f, 1f), Gfx.Lit(Panel, 0.9f));
+        Gfx.Box("Monitor_Ekran", t, new Vector3(mx - 0.17f, 1.2f, mz), new Vector3(0.01f, 0.52f, 0.92f), Gfx.Glow(new Color(0.2f, 0.6f, 0.9f)));
+        Gfx.Text("Monitor_Yazi", t, new Vector3(mx - 0.16f, 1.2f, mz), Quaternion.LookRotation(Vector3.left), "MÜTEŞEBBİS\n<size=40>hesabım</size>", 0.09f, Color.white);
         var pc = new GameObject("Bilgisayar");
         pc.transform.SetParent(t, false);
-        pc.transform.position = new Vector3(mx, 0, c.z + 1.5f);
+        pc.transform.position = new Vector3(mx, 0, mz);
         pc.transform.rotation = Quaternion.LookRotation(Vector3.right);
         Interactable.Make(pc, Interactable.Kind.Computer, new Vector3(0, 0, 1.1f), "Bilgisayarda hesabına bak", "BAK", 2f);
+        PointLight(t, new Vector3(c.x - 6f, h - 0.6f, c.z), 8f, 1.1f, new Color(1f, 0.9f, 0.75f));
 
-        PointLight(t, new Vector3(c.x, h - 0.6f, c.z), 11f, 1.3f, new Color(1f, 0.9f, 0.75f));
+        // ---- Salon: kanepe, TV, yemek masası, mutfak tezgâhı, anne ve baba
+        var sofa = Gfx.Lit(new Color(0.18f, 0.32f, 0.5f), 0.2f);
+        Gfx.Box("Kanepe", t, new Vector3(c.x + 4.5f, 0.3f, c.z + 4.6f), new Vector3(3.2f, 0.6f, 1f), sofa, true);
+        Gfx.Box("Kanepe_Arka", t, new Vector3(c.x + 4.5f, 0.75f, c.z + 5.05f), new Vector3(3.2f, 0.9f, 0.25f), sofa);
+        Gfx.Box("Sehpa", t, new Vector3(c.x + 4.5f, 0.25f, c.z + 2.9f), new Vector3(1.4f, 0.5f, 0.7f), wood, true);
+        Gfx.Box("TV_Sehpa", t, new Vector3(c.x + 4.5f, 0.3f, c.z + 0.8f), new Vector3(2.4f, 0.6f, 0.5f), wood, true);
+        Gfx.Box("TV", t, new Vector3(c.x + 4.5f, 1.15f, c.z + 0.8f), new Vector3(1.8f, 1.0f, 0.06f), Gfx.Lit(Panel, 0.9f));
+        Gfx.Box("TV_Ekran", t, new Vector3(c.x + 4.5f, 1.15f, c.z + 0.84f), new Vector3(1.7f, 0.9f, 0.01f), Gfx.Glow(new Color(0.25f, 0.5f, 0.7f) * 0.7f));
+        Gfx.Box("Yemek_Masasi", t, new Vector3(c.x + 1.5f, 0.75f, c.z - 3f), new Vector3(1.6f, 0.06f, 1.1f), wood, true);
+        foreach (int s in new[] { -1, 1 })
+            Gfx.Box("Sandalye", t, new Vector3(c.x + 1.5f + s * 1.1f, 0.25f, c.z - 3f), new Vector3(0.5f, 0.5f, 0.5f), wood, true);
+        Gfx.Box("Mutfak_Tezgah", t, new Vector3(c.x + 6f, 0.5f, c.z - sz / 2f + 0.4f), new Vector3(5f, 1f, 0.7f), Gfx.Lit(new Color(0.9f, 0.9f, 0.88f), 0.5f), true);
+        Gfx.Box("Mutfak_Dolap", t, new Vector3(c.x + 6f, 2.6f, c.z - sz / 2f + 0.25f), new Vector3(5f, 0.9f, 0.4f), Gfx.Lit(new Color(0.75f, 0.55f, 0.35f), 0.3f));
+
+        var father = City.Person(t, Vector3.zero, Quaternion.identity, false, 3, "Günaydın evladım! Gel bakalım.", 1);
+        father.name = "Baba";
+        father.transform.position = new Vector3(c.x + 0.8f, 0, c.z + 0.6f);
+        father.transform.rotation = Quaternion.LookRotation(Vector3.left);
+        Interactable.Make(father, Interactable.Kind.Parent, new Vector3(0, 0, 1.2f), "Babanla konuş", "KONUŞ", 2.6f).arg = 0;
+        Father = father.transform;
+
+        var mother = City.Person(t, Vector3.zero, Quaternion.identity, true, 0, "Kahvaltın masada!", 0);
+        mother.name = "Anne";
+        mother.transform.position = new Vector3(c.x + 6f, 0, c.z - sz / 2f + 1.5f);
+        mother.transform.rotation = Quaternion.LookRotation(Vector3.forward);
+        Interactable.Make(mother, Interactable.Kind.Parent, new Vector3(0, 0, 1.2f), "Annenle konuş", "KONUŞ", 2.4f).arg = 1;
+
+        PointLight(t, new Vector3(c.x + 5f, h - 0.6f, c.z), 10f, 1.3f, new Color(1f, 0.9f, 0.75f));
     }
 
     // ================================================================ banka
@@ -192,7 +233,7 @@ public static class Town
         Gfx.Box("Tabela_Cerceve", t, new Vector3(fx - 0.74f, 6.14f, c.z), new Vector3(0.1f, 0.06f, 6.9f), Gfx.Glow(Gold));
         Gfx.Box("Tabela_Cerceve", t, new Vector3(fx - 0.74f, 5.06f, c.z), new Vector3(0.1f, 0.06f, 6.9f), Gfx.Glow(Gold));
         Gfx.Text("Tabela_Yazi", t, new Vector3(fx - 0.78f, 5.6f, c.z), Quaternion.LookRotation(Vector3.right), "MTBS BANKASI", 0.62f, Gold);
-        Gfx.Text("Alt_Yazi", t, new Vector3(fx - 0.5f, 4.6f, c.z), Quaternion.LookRotation(Vector3.right), "kredi · ödeme · hesap", 0.26f, Color.white);
+        Gfx.Text("Alt_Yazi", t, new Vector3(fx - 0.5f, 4.6f, c.z), Quaternion.LookRotation(Vector3.right), "fatura · ödeme · varlık", 0.26f, Color.white);
 
         // İç: vezne tezgahı (doğu tarafında, kuzey-güney boyunca), arkasında görevliler
         float vx = c.x + 3.5f;
@@ -203,9 +244,9 @@ public static class Town
         // Veznenin üstünde duvar tabelası
         float wx = c.x + sx / 2f - 0.05f;
         Gfx.Box("Vezne_Pano", t, new Vector3(wx, 4.6f, c.z), new Vector3(0.1f, 2.2f, 9f), Gfx.Lit(Panel, 0.85f));
-        Gfx.Text("Vezne_Baslik", t, new Vector3(wx - 0.08f, 5.2f, c.z), Quaternion.LookRotation(Vector3.right), "KREDİ  ·  ÖDEME", 0.5f, Gold);
+        Gfx.Text("Vezne_Baslik", t, new Vector3(wx - 0.08f, 5.2f, c.z), Quaternion.LookRotation(Vector3.right), "FATURA  ·  ÖDEME", 0.5f, Gold);
         Gfx.Text("Vezne_Bilgi", t, new Vector3(wx - 0.08f, 4.2f, c.z), Quaternion.LookRotation(Vector3.right),
-            "100.000 MLS kredi · 5 günde 20.000'lik dilimler\n30 günde bir 10.000 MLS taksit · gecikmede %5 ceza", 0.2f, Color.white);
+            "Ev faturaları (aylık ev gideri) bu veznede ödenir\nGeciken faturaya ceza işler", 0.2f, Color.white);
 
         int n = 0;
         foreach (float dz in new[] { -2.4f, 2.4f })
@@ -218,7 +259,7 @@ public static class Town
             lc.model = n == 0 ? 0 : 1;
             lc.look = new Look { female = n == 0, skin = 1 + n, hairStyle = 1, hairColor = 1, uniform = true };
             lc.idleState = n == 0 ? 3 : 0;
-            var bubble = Gfx.Text("Soz", teller.transform, new Vector3(0, 2.2f, 0), Quaternion.identity, n == 0 ? "Kredi işlemleri buradan" : "Borç ödemesi buradan", 0.22f, Gfx.Hex("#FFD54A"));
+            var bubble = Gfx.Text("Soz", teller.transform, new Vector3(0, 2.2f, 0), Quaternion.identity, n == 0 ? "Faturalar buradan" : "Ev giderini burada öde", 0.22f, Gfx.Hex("#FFD54A"));
             bubble.gameObject.AddComponent<Billboard>();
             bubble.gameObject.SetActive(false);
             teller.AddComponent<Greeter>().bubble = bubble;
@@ -227,7 +268,7 @@ public static class Town
             desk.transform.SetParent(t, false);
             desk.transform.position = new Vector3(vx, 0, c.z + dz);
             desk.transform.rotation = Quaternion.LookRotation(Vector3.left);
-            Interactable.Make(desk, Interactable.Kind.Teller, new Vector3(0, 0, 1.2f), "Veznede kredi çek / borç öde", "VEZNE", 2.2f);
+            Interactable.Make(desk, Interactable.Kind.Teller, new Vector3(0, 0, 1.2f), "Veznede ev faturalarını öde", "VEZNE", 2.2f);
             n++;
         }
 

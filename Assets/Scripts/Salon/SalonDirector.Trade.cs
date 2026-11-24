@@ -30,19 +30,7 @@ public partial class SalonDirector
         chart = null;
         duel = 0;
         Market.I.LoadDetail(s, () => { if (trade == s && string.IsNullOrEmpty(priceText)) priceText = PxText(s.price); });
-        if (Market.I.Live)
-        {
-            Market.I.Get("/tmtbs/duello", (r, err) =>
-            {
-                activeDuels.Clear();
-                if (r == null) return;
-                foreach (var d in J.A(r, "benim"))
-                {
-                    string st = J.S(d, "durum");
-                    if (st == "aktif" || st == "devam" || st == "basladi") activeDuels.Add(J.L(d, "id"));
-                }
-            });
-        }
+        activeDuels.Clear(); // düello yalnız Trade of MTBS hesabında var
     }
 
     static double ParsePrice(string t)
@@ -159,8 +147,6 @@ public partial class SalonDirector
         qty = ParseQty();
         GUILayout.Label($"Alış ≈ <b>{Fmt.Mls(qty * buyPx)}</b>   ·   Satış ≈ <b>{Fmt.Mls(qty * sellPx)}</b>", small);
 
-        bool banned = m.Live && J.B(m.credit, "alis_yasak");
-        if (banned) GUILayout.Label("<color=#FF7A7A>Gecikmiş kredi taksidin var: borcunu ödeyene kadar alış yapamazsın (MTBS Bankası).</color>", small);
 
         GUI.enabled = !tradeBusy && s.detailLoaded && (!limitMode || limitPx > 0);
         GUILayout.BeginHorizontal();
@@ -269,7 +255,7 @@ public partial class SalonDirector
         if (!Market.I.Live) { chart = new Dictionary<string, object> { { "_hata", "Grafik hesabınla giriş yapınca görünür." } }; return; }
         chartBusy = true;
         var s = trade;
-        Market.I.Get("/tmtbs/hisse/" + s.id + "/grafik?aralik=" + chartRange, (r, err) =>
+        Market.I.Get("/dunya/grafik/" + s.id + "?aralik=" + chartRange, (r, err) =>
         {
             chartBusy = false;
             if (trade != s) return;

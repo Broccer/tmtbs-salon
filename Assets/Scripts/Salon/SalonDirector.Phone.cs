@@ -8,7 +8,7 @@ using UnityEngine;
 /// </summary>
 public partial class SalonDirector
 {
-    static readonly string[] PhoneTabs = { "Ana", "Piyasa", "Portföy", "Haberler", "Sıralama", "Görevler", "Düello", "Haklar", "Profil", "Git" };
+    static readonly string[] PhoneTabs = { "Hayat", "İş", "Alışveriş", "Emlak", "Galeri", "Müzayede", "Ulaşım", "Ana", "Piyasa", "Portföy", "Haberler", "Sıralama", "Görevler", "Haklar", "Profil" };
     int phoneTab;
     bool atComputer;
     readonly Dictionary<string, Dictionary<string, object>> pdata = new Dictionary<string, Dictionary<string, object>>();
@@ -22,6 +22,7 @@ public partial class SalonDirector
     void OpenPhone(bool computer)
     {
         OpenPanelCommon(Panel.Phone);
+        placeTab = null;
         atComputer = computer;
         phoneMsg = null;
         pdata.Clear();
@@ -40,22 +41,7 @@ public partial class SalonDirector
         });
     }
 
-    void LoadTab(int t)
-    {
-        switch (PhoneTabs[t])
-        {
-            case "Ana": Fetch("ana", "/tmtbs/ana"); break;
-            case "Haberler": Fetch("haber", "/tmtbs/haberler"); break;
-            case "Sıralama": Fetch("sira", "/tmtbs/siralama?donem=" + rankPeriod); break;
-            case "Görevler":
-                Fetch("yol", "/tmtbs/yol");
-                if (Market.I.Live) Market.I.Post("/tmtbs/yol/goruldu", null, (r, e) => { });
-                break;
-            case "Düello": Fetch("duello", "/tmtbs/duello"); break;
-            case "Profil": Fetch("profil", "/tmtbs/profil/ben"); break;
-            case "Portföy": case "Haklar": Market.I.RefreshStatus(); break;
-        }
-    }
+    void LoadTab(int t) { LoadTabName(PhoneTabs[t]); }
 
     /// <summary>Yükleniyor / hata / veri. Veri yoksa false döner.</summary>
     bool Data(string key, out Dictionary<string, object> d)
@@ -71,12 +57,13 @@ public partial class SalonDirector
         var r = PanelRect(520);
         float iw = BeginPanel(r);
         GUILayout.BeginHorizontal();
-        GUILayout.Label(atComputer ? "<b>Ev bilgisayarı</b>" : "<b>Cep · Borsa MTBS</b>", h2);
+        GUILayout.Label(placeTab != null ? "<b>" + placeTitle + "</b>" : atComputer ? "<b>Ev bilgisayarı</b>" : "<b>Telefon · Müteşebbis</b>", h2);
         GUILayout.FlexibleSpace();
         if (GUILayout.Button("✕", btn, GUILayout.Width(44), GUILayout.Height(36))) { EndPanel(); ClosePanel(); return; }
         GUILayout.EndHorizontal();
 
         int perRow = iw < 380 ? 4 : 5;
+        if (placeTab == null)
         for (int i = 0; i < PhoneTabs.Length; i += perRow)
         {
             GUILayout.BeginHorizontal();
@@ -93,19 +80,7 @@ public partial class SalonDirector
         GUILayout.Space(6);
         Msg(phoneMsg, phoneOk);
 
-        switch (PhoneTabs[phoneTab])
-        {
-            case "Ana": TabHome(); break;
-            case "Piyasa": TabMarket(); break;
-            case "Portföy": TabPortfolio(); break;
-            case "Haberler": TabNews(); break;
-            case "Sıralama": TabRank(); break;
-            case "Görevler": TabRoad(); break;
-            case "Düello": TabDuel(); break;
-            case "Haklar": TabRights(); break;
-            case "Profil": TabProfile(); break;
-            case "Git": TabTravel(); break;
-        }
+        DrawTabName(CurrentTab);
         GUILayout.Space(10);
         if (GUILayout.Button("Kapat (Esc)", GUILayout.Height(36))) { EndPanel(); ClosePanel(); return; }
         EndPanel();
@@ -114,7 +89,7 @@ public partial class SalonDirector
     bool NeedLive()
     {
         if (Market.I.Live) return true;
-        GUILayout.Label("Bu bölüm hesabınla giriş yapınca açılır. Demo kipinde yalnız piyasa, portföy (sanal) ve yolculuk var.", label);
+        GUILayout.Label("Bu bölüm hesabınla giriş yapınca açılır. Demo kipinde yalnız piyasa, portföy (sanal), otobüs ve evdekiler var.", label);
         return false;
     }
 
@@ -147,7 +122,7 @@ public partial class SalonDirector
             GUILayout.Label($"<color={(buy ? "#5BE38A" : "#FF7A7A")}>{(buy ? "AL" : "SAT")}</color> <b>{J.S(o, "isim")}</b> {Fmt.N(J.D(o, "kalan"))} × {Fmt.N2(J.D(o, "fiyat"))}  <size=12>(son {Fmt.N2(J.D(o, "son_fiyat"))})</size>", label);
             GUILayout.FlexibleSpace();
             if (GUILayout.Button("İptal", GUILayout.Width(64), GUILayout.Height(30)))
-                m.CancelOrder(id, 0, (msg, ok) => { phoneMsg = msg; phoneOk = ok; pdata.Remove("ana"); Fetch("ana", "/tmtbs/ana"); });
+                m.CancelOrder(id, 0, (msg, ok) => { phoneMsg = msg; phoneOk = ok; pdata.Remove("ana"); Fetch("ana", "/dunya/piyasa"); });
             GUILayout.EndHorizontal();
         }
 
@@ -240,111 +215,6 @@ public partial class SalonDirector
         for (int i = 0; i < list.Count && i < 40; i++) { GUILayout.Label(NewsLine(list[i]), label); GUILayout.Space(2); }
     }
 
-    // ---------------------------------------------------------------- Sıralama
-
-    void TabRank()
-    {
-        if (!NeedLive()) return;
-        GUILayout.BeginHorizontal();
-        foreach (var (k, n) in new[] { ("gun", "Gün"), ("hafta", "Hafta"), ("ay", "Ay"), ("yil", "Yıl") })
-            if (GUILayout.Button(n, k == rankPeriod ? tabOn : tab, GUILayout.Height(32)))
-            {
-                rankPeriod = k;
-                pdata.Remove("sira");
-                Fetch("sira", "/tmtbs/siralama?donem=" + k);
-            }
-        GUILayout.EndHorizontal();
-        if (!Data("sira", out var d)) return;
-        var ben = J.Get(d, "ben");
-        if (ben is Dictionary<string, object> bd && bd.Count > 0)
-            Row("Senin sıran", $"<b>{Fmt.N(J.D(bd, "sira"))}.</b> · kazanç {Fmt.N(J.D(bd, "kazanc"))}");
-        foreach (var o in J.A(d, "liste"))
-        {
-            bool me = J.B(o, "ben");
-            string line = $"{Fmt.N(J.D(o, "sira"))}. {J.S(o, "ad")}";
-            Row(me ? $"<color=#FFD54A><b>{line}</b></color>" : line,
-                $"<color={Fmt.ChangeColor(J.D(o, "kazanc"))}>{Fmt.N(J.D(o, "kazanc"))}</color>  <size=12>net {Fmt.Short(J.D(o, "net"))}</size>");
-        }
-    }
-
-    // ---------------------------------------------------------------- Görevler (yol haritası)
-
-    void TabRoad()
-    {
-        if (!NeedLive()) return;
-        if (!Data("yol", out var d)) return;
-        var y = J.O(d, "yol");
-        Row("Tamamlanan", $"{Fmt.N(J.D(y, "tamam_sayisi"))} / {Fmt.N(J.D(y, "toplam_gorev"))}");
-        Row("Kazanılan ödül", $"{Fmt.Mls(J.D(y, "kazanilan"))} / {Fmt.Mls(J.D(y, "toplam_odul"))}");
-        var next = J.Get(y, "sonraki");
-        if (next is Dictionary<string, object> nd && nd.Count > 0) Row("Sıradaki", Pretty(J.S(nd, "key")));
-        else if (next is string ns && ns != "") Row("Sıradaki", Pretty(ns));
-        foreach (var g in J.A(y, "gorevler"))
-        {
-            bool done = J.B(g, "tamam");
-            string mark = done ? "<color=#5BE38A>✓</color>" : "○";
-            string yeni = J.B(g, "yeni") ? " <color=#FFD54A>yeni</color>" : "";
-            Row($"{mark} {Pretty(J.S(g, "key"))}{yeni}", Fmt.Mls(J.D(g, "odul")));
-        }
-    }
-
-    // ---------------------------------------------------------------- Düello
-
-    void TabDuel()
-    {
-        if (!NeedLive()) return;
-        if (!Data("duello", out var d)) return;
-        double fee = J.D(d, "ucret");
-        GUILayout.Label($"İki oyuncu aynı başlangıç parasıyla bir süre işlem yapar; daha çok kazanan ödülü alır. Katılım ücreti {Fmt.Mls(fee)}. Düello hesabıyla işlem için bankodaki panelde hesabı seç.", small);
-        if (GUILayout.Button("Yeni düello aç (" + Fmt.Mls(fee) + ")", btn, GUILayout.Height(40)))
-            DuelPost("/tmtbs/duello", new Dictionary<string, object>(), "Düello açıldı, rakip bekleniyor.");
-
-        var mine = J.A(d, "benim");
-        Title($"Düellolarım ({mine.Count})");
-        if (mine.Count == 0) GUILayout.Label("Düellon yok.", small);
-        foreach (var o in mine)
-        {
-            long id = J.L(o, "id");
-            string durum = J.S(o, "durum");
-            GUILayout.BeginHorizontal();
-            string sonuc = J.S(o, "sonuc") != "" ? " · " + J.S(o, "sonuc") : "";
-            GUILayout.Label($"#{id} · {Pretty(durum)} · rakip <b>{(J.S(o, "rakip") != "" ? J.S(o, "rakip") : "—")}</b> · ödül {Fmt.N(J.D(o, "odul"))}{sonuc}" +
-                (J.S(o, "bitis") != "" ? $" <size=12>bitiş {ShortDate(J.S(o, "bitis"))}</size>" : ""), small);
-            GUILayout.FlexibleSpace();
-            if (J.B(o, "davet_bana") && GUILayout.Button("Kabul", GUILayout.Width(70), GUILayout.Height(30)))
-                DuelPost("/tmtbs/duello/" + id + "/katil", null, "Düelloya katıldın.");
-            if (durum == "bekliyor" && GUILayout.Button("Vazgeç", GUILayout.Width(76), GUILayout.Height(30)))
-                DuelPost("/tmtbs/duello/" + id + "/vazgec", null, "Düellodan vazgeçildi.");
-            GUILayout.EndHorizontal();
-        }
-
-        var salon = J.A(d, "salon");
-        Title($"Açık düellolar ({salon.Count})");
-        if (salon.Count == 0) GUILayout.Label("Şu an rakip arayan yok.", small);
-        foreach (var o in salon)
-        {
-            long id = J.L(o, "id");
-            GUILayout.BeginHorizontal();
-            GUILayout.Label($"<b>{J.S(o, "acan")}</b> · ücret {Fmt.N(J.D(o, "ucret"))} · ödül {Fmt.N(J.D(o, "odul"))} · {Fmt.N(J.D(o, "sure_gun"))} gün", small);
-            GUILayout.FlexibleSpace();
-            if (GUILayout.Button("Katıl", GUILayout.Width(70), GUILayout.Height(30)))
-                DuelPost("/tmtbs/duello/" + id + "/katil", null, "Düelloya katıldın.");
-            GUILayout.EndHorizontal();
-        }
-    }
-
-    void DuelPost(string path, Dictionary<string, object> body, string okMsg)
-    {
-        Market.I.Post(path, body, (r, err) =>
-        {
-            phoneMsg = err ?? okMsg;
-            phoneOk = err == null;
-            pdata.Remove("duello");
-            Fetch("duello", "/tmtbs/duello");
-            Market.I.RefreshStatus();
-        });
-    }
-
     // ---------------------------------------------------------------- Haklar (sermaye artırımı)
 
     void TabRights()
@@ -391,27 +261,4 @@ public partial class SalonDirector
         }
     }
 
-    // ---------------------------------------------------------------- Yolculuk
-
-    void TabTravel()
-    {
-        GUILayout.Label("Hızlı git (telefonda uzun yürümek istemezsen):", small);
-        if (GUILayout.Button("Evim", btn, GUILayout.Height(42))) { GoTo(Town.HomeSpawn, Town.HomeFacing); Show("Evin", 1.5f); }
-        if (GUILayout.Button("MTBS Bankası · vezne", btn, GUILayout.Height(42)))
-        {
-            GoTo(new Vector3(Town.BankX + 2.3f, 0, Town.Z - 2.4f), Quaternion.LookRotation(Vector3.right));
-            Show("MTBS Bankası", 1.5f);
-        }
-        if (GUILayout.Button("Borsa MTBS · bina girişi", btn, GUILayout.Height(42)))
-        {
-            GoTo(new Vector3(0, 0, SeljukBuilding.ZF - 4f), Quaternion.identity);
-            Show("Borsa MTBS", 1.5f);
-        }
-        if (GUILayout.Button("Seans salonu · panoların önü", btn, GUILayout.Height(42)))
-        {
-            GoTo(new Vector3(0, 0, 26f), Quaternion.identity);
-            Show("Seans salonu", 1.5f);
-        }
-        GUILayout.Label("Bir markanın bankosuna gitmek için \"Piyasa\" bölümünden markaya dokun.", small);
-    }
 }

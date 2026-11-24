@@ -8,7 +8,7 @@ public class Interactable : MonoBehaviour
 {
     public static readonly List<Interactable> All = new List<Interactable>();
 
-    public enum Kind { Counter, Teller, Seat, Computer }
+    public enum Kind { Counter, Teller, Seat, Computer, BusStop, Buffet, JobCenter, Estate, CarDealer, Auction, Shop, Parent }
     public Kind kind;
     public string prompt = "";
     public string buttonLabel = "İŞLEM";
@@ -16,6 +16,7 @@ public class Interactable : MonoBehaviour
     public Vector3 localPoint;     // oyuncunun durması gereken nokta (yerel)
     public Kiosk counter;
     public Seat seat;
+    public int arg;                // durak / dükkân / ebeveyn sırası
 
     public Vector3 Point => transform.TransformPoint(localPoint);
 

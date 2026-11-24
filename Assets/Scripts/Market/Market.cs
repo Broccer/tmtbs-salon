@@ -43,7 +43,9 @@ public class Market : MonoBehaviour
     public string userName = "";
     public long userId;
     public double cash, stockValue, net;
-    public Dictionary<string, object> credit = new Dictionary<string, object>();   // kredi durumu (yoksa boş)
+    /// <summary>Son /dashboard yanıtı: user, time, is, ev, ulasim, yemek, egitim, magaza…</summary>
+    public Dictionary<string, object> dash = new Dictionary<string, object>();
+    public int dashVersion;
     public List<object> rights = new List<object>();                               // bekleyen sermaye artırımı hakları
     public List<object> portfolio = new List<object>();
     public Dictionary<string, object> summary = new Dictionary<string, object>();  // portföy özeti
@@ -73,35 +75,21 @@ public class Market : MonoBehaviour
 
     public void Login(string email, string pass, Action<string> done)
     {
-        Api.I.Post("/tmtbs/auth/giris", new Dictionary<string, object> { { "email", email.Trim() }, { "sifre", pass }, { "cihaz", "salon-webgl" } },
+        Api.I.Post("/auth/login", new Dictionary<string, object> { { "email", email.Trim() }, { "sifre", pass }, { "cihaz", "dunya-webgl" } },
             r => { AcceptLogin(r); done(null); },
             (m, c) => done(m));
     }
 
     public void Register(string name, string email, string pass, Action<string> done)
     {
-        Api.I.Post("/tmtbs/auth/kayit", new Dictionary<string, object> { { "adsoyad", name.Trim() }, { "email", email.Trim() }, { "sifre", pass } },
-            r => done(null), (m, c) => done(m));
-    }
-
-    public void Verify(string email, string code, Action<string> done)
-    {
-        Api.I.Post("/tmtbs/auth/dogrula", new Dictionary<string, object> { { "email", email.Trim() }, { "kod", code.Trim() }, { "cihaz", "salon-webgl" } },
+        Api.I.Post("/auth/register", new Dictionary<string, object> { { "adsoyad", name.Trim() }, { "email", email.Trim() }, { "sifre", pass }, { "sifre_tekrar", pass }, { "ulke", "Türkiye" }, { "cihaz", "dunya-webgl" } },
             r => { AcceptLogin(r); done(null); }, (m, c) => done(m));
     }
 
     public void SendResetCode(string email, Action<string> done)
     {
-        Api.I.Post("/tmtbs/auth/kod-gonder", new Dictionary<string, object> { { "email", email.Trim() }, { "tip", "sifre" } },
+        Api.I.Post("/auth/sifremi-unuttum", new Dictionary<string, object> { { "email", email.Trim() } },
             r => done(null), (m, c) => done(m));
-    }
-
-    public void ResetPassword(string email, string code, string newPass, Action<string> done)
-    {
-        Api.I.Post("/tmtbs/auth/sifre-yenile",
-            new Dictionary<string, object> { { "email", email.Trim() }, { "kod", code.Trim() }, { "sifre", newPass }, { "cihaz", "salon-webgl" } },
-            r => { AcceptLogin(r); done(null); },
-            (m, c) => done(m));
     }
 
     void AcceptLogin(Dictionary<string, object> r)
@@ -116,7 +104,7 @@ public class Market : MonoBehaviour
     public void TryResume(Action<bool> done)
     {
         if (!Api.I.HasToken) { done(false); return; }
-        Api.I.Get("/tmtbs/ben", r =>
+        Api.I.Get("/me", r =>
         {
             userName = J.S(J.O(r, "user"), "adsoyad");
             userId = J.L(J.O(r, "user"), "id");
@@ -131,11 +119,11 @@ public class Market : MonoBehaviour
 
     public void Logout()
     {
-        if (mode == Mode.Live && Api.I.HasToken) Api.I.Post("/tmtbs/auth/cikis", null, null, null);
+        if (mode == Mode.Live && Api.I.HasToken) Api.I.Post("/auth/logout", null, null, null);
         Api.I.SetToken("");
         mode = Mode.None;
         stocks.Clear();
-        credit.Clear();
+        dash.Clear();
         rights.Clear();
         portfolio.Clear();
         nextOrder = 0;
@@ -159,13 +147,13 @@ public class Market : MonoBehaviour
         if (mode != Mode.Live || refreshing) return;
         refreshing = true;
         lastRefresh = Time.time;
-        Api.I.Get("/tmtbs/piyasa", r =>
+        Api.I.Get("/borsa", r =>
         {
             ApplyList(J.A(r, "liste"));
-            ApplyFavorites(J.A(r, "favoriler"));
-            Api.I.Get("/tmtbs/durum", d =>
+            ApplyBorsa(r);
+            Api.I.Get("/dashboard", d =>
             {
-                ApplyStatus(d);
+                ApplyDash(d);
                 refreshing = false;
                 status = "Canlı · " + DateTime.Now.ToString("HH:mm:ss");
                 Changed?.Invoke();
@@ -177,7 +165,11 @@ public class Market : MonoBehaviour
     public void RefreshStatus(Action done = null)
     {
         if (mode != Mode.Live) { done?.Invoke(); return; }
-        Api.I.Get("/tmtbs/durum", d => { ApplyStatus(d); Changed?.Invoke(); done?.Invoke(); }, (m, c) => done?.Invoke());
+        Api.I.Get("/dashboard", d =>
+        {
+            ApplyDash(d);
+            Api.I.Get("/borsa", r => { ApplyBorsa(r); Changed?.Invoke(); done?.Invoke(); }, (m, c) => { Changed?.Invoke(); done?.Invoke(); });
+        }, (m, c) => done?.Invoke());
     }
 
     void OnFail(string msg, long code)
@@ -227,34 +219,44 @@ public class Market : MonoBehaviour
         foreach (var s in stocks) s.favorite = set.Contains(s.id);
     }
 
-    void ApplyStatus(Dictionary<string, object> d)
+    void ApplyDash(Dictionary<string, object> d)
     {
-        cash = J.D(d, "para");
-        stockValue = J.D(d, "hisse_degeri");
-        net = J.D(d, "net_deger");
+        dash = d;
+        dashVersion++;
         var u = J.O(d, "user");
+        cash = J.D(u, "para");
         string n = J.S(u, "adsoyad");
         if (!string.IsNullOrEmpty(n)) userName = n;
         if (J.L(u, "id") > 0) userId = J.L(u, "id");
-        credit = J.O(d, "kredi");
+        net = cash + stockValue;
+    }
+
+    void ApplyBorsa(Dictionary<string, object> d)
+    {
         rights = J.A(d, "haklar");
         portfolio = J.A(d, "portfoy");
         summary = J.O(d, "ozet");
         if (J.Get(d, "favoriler") != null) ApplyFavorites(J.A(d, "favoriler"));
+        stockValue = 0;
         foreach (var s in stocks) { s.myQty = 0; s.myCost = 0; }
         foreach (var p in portfolio)
         {
+            stockValue += J.D(p, "deger");
             var s = Find(J.L(p, "id"));
             if (s == null) continue;
             s.myQty = J.L(p, "adet");
             s.myCost = J.D(p, "ort_maliyet");
         }
+        net = cash + stockValue;
     }
+
+    /// <summary>Nakit değişen bir işlemden sonra (satın alma, harçlık, fatura) hemen yeniden okur.</summary>
+    public void Touch() { lastRefresh = -999f; }
 
     public void LoadDetail(Stock s, Action done, long duel = 0)
     {
         if (mode == Mode.Demo) { DemoBook(s); done?.Invoke(); return; }
-        Api.I.Get("/tmtbs/hisse/" + s.id + (duel > 0 ? "?duello=" + duel : ""), r => { ApplyDetail(s, J.O(r, "borsa")); done?.Invoke(); },
+        Api.I.Get("/borsa/" + s.id, r => { ApplyDetail(s, J.O(r, "borsa")); done?.Invoke(); },
             (m, c) => { status = m; done?.Invoke(); });
     }
 
@@ -300,7 +302,7 @@ public class Market : MonoBehaviour
 
         var body = new Dictionary<string, object> { { "yon", buy ? "al" : "sat" }, { "fiyat", px }, { "adet", qty } };
         if (duel > 0) body["duello"] = duel;
-        Api.I.Post("/tmtbs/hisse/" + s.id + "/emir", body, r =>
+        Api.I.Post("/borsa/" + s.id + "/emir", body, r =>
         {
             long done_ = J.L(r, "islem_adet");
             ApplyDetail(s, J.O(r, "borsa"));
@@ -318,13 +320,13 @@ public class Market : MonoBehaviour
         if (mode != Mode.Live) { done("Demo kipinde emir defteri yok.", false); return; }
         var body = new Dictionary<string, object>();
         if (duel > 0) body["duello"] = duel;
-        Api.I.Post("/tmtbs/emir/" + orderId + "/iptal", body, r => { done("Emir iptal edildi.", true); lastRefresh = -999f; }, (m, c) => done(m, false));
+        Api.I.Post("/borsa/emir/" + orderId + "/iptal", body, r => { done("Emir iptal edildi.", true); lastRefresh = -999f; }, (m, c) => done(m, false));
     }
 
     public void ToggleFavorite(Stock s, Action<string> done)
     {
         if (mode != Mode.Live) { s.favorite = !s.favorite; done?.Invoke(null); return; }
-        Api.I.Post("/tmtbs/hisse/" + s.id + "/favori", null, r => { s.favorite = J.B(r, "favori"); Changed?.Invoke(); done?.Invoke(null); },
+        Api.I.Post("/borsa/" + s.id + "/favori", null, r => { s.favorite = J.B(r, "favori"); Changed?.Invoke(); done?.Invoke(null); },
             (m, c) => done?.Invoke(m));
     }
 
@@ -343,39 +345,26 @@ public class Market : MonoBehaviour
         Api.I.Post(path, body, r => done(r, null), (m, c) => done(null, c == 404 ? "Bu işlem sunucuda henüz açık değil." : m));
     }
 
-    public void CreditDraw(Action<string, bool> done)
-    {
-        Post("/tmtbs/kredi/cek", null, (r, err) =>
-        {
-            if (err != null) { done(err, false); return; }
-            credit = J.O(r, "kredi");
-            RefreshStatus();
-            done($"{Fmt.Mls(J.D(r, "yatan"))} hesabına yatırıldı.", true);
-        });
-    }
-
-    public void CreditPay(long amount, Action<string, bool> done)
-    {
-        Post("/tmtbs/kredi/ode", new Dictionary<string, object> { { "tutar", amount } }, (r, err) =>
-        {
-            if (err != null) { done(err, false); return; }
-            credit = J.O(r, "kredi");
-            RefreshStatus();
-            done($"{Fmt.Mls(J.D(r, "odenen"))} borcuna ödendi.", true);
-        });
-    }
-
     public void AnswerRight(long rightId, bool join, long qty, Action<string, bool> done)
     {
         var body = new Dictionary<string, object> { { "katil", join } };
         if (join && qty > 0) body["adet"] = qty;
-        Post("/tmtbs/artirim/" + rightId, body, (r, err) =>
+        Post("/borsa/artirim/" + rightId, body, (r, err) =>
         {
             if (err != null) { done(err, false); return; }
             rights = J.A(r, "haklar");
             RefreshStatus();
             done(join ? "Sermaye artırımına katıldın." : "Haktan vazgeçtin.", true);
         });
+    }
+
+    /// <summary>Demo kipinde sanal para ekler (babanın harçlığı).</summary>
+    public void DemoGift(double amount)
+    {
+        if (mode != Mode.Demo) return;
+        cash += amount;
+        RecalcDemo();
+        Changed?.Invoke();
     }
 
     public Stock Find(long id)
@@ -393,7 +382,7 @@ public class Market : MonoBehaviour
         nextOrder = 0;
         userName = "Misafir";
         cash = 100000;
-        credit = new Dictionary<string, object>();
+        dash = new Dictionary<string, object>();
         RecalcDemo();
         status = "Demo · gerçek fiyatlar yükleniyor…";
         Changed?.Invoke();

@@ -12,8 +12,8 @@ public static class SeljukBuilding
     public const float Z0 = -SalonBuilder.HalfD - 0.5f;   // salon arka duvarının dış yüzü
     const float CorridorLen = 11f;
     public const float ZF = Z0 - CorridorLen;              // cephenin dış yüzü
-    public const float SquareDepth = 64f;             // meydanın derinliği (cepheden geriye)
-    public const float SquareHalfW = 64f;
+    public const float SquareDepth = 120f;            // meydanın derinliği (cepheden geriye)
+    public const float SquareHalfW = 86f;
     public const float CrossZ = ZF - 30f;             // ev ve bankaya giden yolların kesiştiği yer
     const float FH = 12f;                           // cephe yüksekliği
     const float PortalZ = 1.6f;                     // taç kapının öne çıkıntısı

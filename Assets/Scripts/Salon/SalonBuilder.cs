@@ -68,6 +68,7 @@ public class SalonBuilder : MonoBehaviour
         var boards = BuildBoards();
         SeljukBuilding.Build(root, boards); // dış cephe, koridor, arka duvar (kapı boşluklu), meydan
         Town.Build(root);                   // ev + banka
+        City.Build(root);                   // cadde, otobüs, duraklar, iş merkezi, emlak, galeri, müzayede, dükkânlar
         BuildCounters();
         BuildSeats();
         var player = BuildPlayer();
