@@ -61,7 +61,7 @@ public partial class SalonDirector
         GUILayout.BeginHorizontal();
         GUILayout.Label(placeTab != null ? "<b>" + placeTitle + "</b>" : atComputer ? "<b>Ev bilgisayarı</b>" : (Market.I.Tm ? "<b>Telefon · Trade of MTBS</b>" : "<b>Telefon · Müteşebbis</b>"), h2);
         GUILayout.FlexibleSpace();
-        if (GUILayout.Button("✕", btn, GUILayout.Width(44), GUILayout.Height(36))) { EndPanel(); ClosePanel(); return; }
+        if (GUILayout.Button("×", btn, GUILayout.Width(44), GUILayout.Height(36))) { EndPanel(); ClosePanel(); return; }
         GUILayout.EndHorizontal();
 
         int perRow = iw < 380 ? 4 : 5;
@@ -143,14 +143,14 @@ public partial class SalonDirector
         var m = Market.I;
         GUILayout.BeginHorizontal();
         if (GUILayout.Toggle(!favOnly, " Tümü", GUILayout.Height(28))) favOnly = false;
-        if (GUILayout.Toggle(favOnly, " ★ Favoriler", GUILayout.Height(28))) favOnly = true;
+        if (GUILayout.Toggle(favOnly, " * Favoriler", GUILayout.Height(28))) favOnly = true;
         GUILayout.EndHorizontal();
-        GUILayout.Label("Bir markaya dokun: bankosuna gidersin. ★ favoriye ekler.", small);
+        GUILayout.Label("Bir markaya dokun: bankosuna gidersin. * favoriye ekler.", small);
         foreach (var s in m.stocks)
         {
             if (favOnly && !s.favorite) continue;
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button(s.favorite ? "<color=#FFD54A>★</color>" : "☆", GUILayout.Width(36), GUILayout.Height(32)))
+            if (GUILayout.Button(s.favorite ? "<color=#FFD54A>*</color>" : "+", GUILayout.Width(36), GUILayout.Height(32)))
                 m.ToggleFavorite(s, null);
             if (GUILayout.Button($"<b>{s.name}</b>   {Fmt.N2(s.price)}  <color={Fmt.ChangeColor(s.change)}>{Fmt.Pct(s.change)}</color>",
                 new GUIStyle(btn) { alignment = TextAnchor.MiddleLeft, fontStyle = FontStyle.Normal }, GUILayout.Height(32)))

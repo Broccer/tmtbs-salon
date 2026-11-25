@@ -235,7 +235,7 @@ public class SalonBuilder : MonoBehaviour
 
     // ================================================================ MTBS Bankası veznesi (arka sol köşe)
 
-    public static readonly Vector3 VezneSpot = new Vector3(-15f, 0, -HalfD + 6.6f);
+    public static readonly Vector3 VezneSpot = new Vector3(-17.4f, 0, -HalfD + 6.4f);
 
     void BuildBank()
     {
@@ -247,7 +247,7 @@ public class SalonBuilder : MonoBehaviour
         var navy = Gfx.Lit(new Color(0.06f, 0.14f, 0.32f), 0.3f);
         Gfx.Box("Vezne_Tezgah", t, new Vector3(-14.6f, 0.55f, z), new Vector3(9.6f, 1.1f, 0.8f), wood, true);
         Gfx.Box("Vezne_Ust", t, new Vector3(-14.6f, 1.13f, z), new Vector3(9.8f, 0.07f, 0.95f), marble);
-        Gfx.Box("Vezne_Cam", t, new Vector3(-14.6f, 1.75f, z - 0.2f), new Vector3(9.6f, 1.15f, 0.04f), Gfx.Lit(new Color(0.5f, 0.7f, 0.8f), 0.9f));
+        Gfx.Box("Vezne_Cam_Ust", t, new Vector3(-14.6f, 2.45f, z - 0.2f), new Vector3(9.6f, 0.1f, 0.06f), Gfx.Lit(new Color(0.5f, 0.7f, 0.8f), 0.9f));
         Gfx.Box("Vezne_Yan", t, new Vector3(-9.75f, 1.2f, z - 1.6f), new Vector3(0.3f, 2.4f, 3.4f), navy, true);
         Gfx.Box("Vezne_Arka", t, new Vector3(-14.6f, 2.6f, -HalfD + 0.1f), new Vector3(10f, 5.2f, 0.1f), navy);
         Gfx.Box("Vezne_Serit", t, new Vector3(-14.6f, 5.3f, -HalfD + 0.16f), new Vector3(10f, 0.1f, 0.06f), Gfx.Glow(Gold));

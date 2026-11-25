@@ -589,7 +589,7 @@ public partial class SalonDirector
             long id = J.L(o, "id");
             string name = J.S(o, "isim");
             GUILayout.BeginHorizontal();
-            GUILayout.Label($"<b>{name}</b>{(id == rec ? " <color=#FFD54A>★ bu ayın önerisi</color>" : "")} · {Fmt.Mls(J.D(o, "fiyat"))}", label);
+            GUILayout.Label($"<b>{name}</b>{(id == rec ? " <color=#FFD54A>* bu ayın önerisi</color>" : "")} · {Fmt.Mls(J.D(o, "fiyat"))}", label);
             GUILayout.FlexibleSpace();
             if (ActButton("Al", 32, 70))
                 Act("/hayat/yemek/satin-al", new Dictionary<string, object> { { "yemek_id", id } }, $"{name} aldın. Afiyet olsun!", "yemek");

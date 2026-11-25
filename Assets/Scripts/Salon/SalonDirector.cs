@@ -322,10 +322,13 @@ public partial class SalonDirector : MonoBehaviour
         return new Rect(x, top, w, h);
     }
 
+    GUIStyle smallNw;
+
     void Row(string k, string v)
     {
+        if (smallNw == null) smallNw = new GUIStyle(small) { wordWrap = false };
         GUILayout.BeginHorizontal();
-        GUILayout.Label(k, small);
+        GUILayout.Label(k, smallNw);
         GUILayout.FlexibleSpace();
         GUILayout.Label(v, right);
         GUILayout.EndHorizontal();
@@ -402,9 +405,9 @@ public partial class SalonDirector : MonoBehaviour
     {
         GUILayout.BeginHorizontal();
         GUILayout.Label(title, small, GUILayout.Width(70));
-        if (GUILayout.Button("◀", GUILayout.Width(34), GUILayout.Height(30))) { idx = (idx + count - 1) % count; changed = true; }
+        if (GUILayout.Button("‹", GUILayout.Width(34), GUILayout.Height(30))) { idx = (idx + count - 1) % count; changed = true; }
         GUILayout.Label("<b>" + value + "</b>", new GUIStyle(label) { alignment = TextAnchor.MiddleCenter, wordWrap = false }, GUILayout.Width(110));
-        if (GUILayout.Button("▶", GUILayout.Width(34), GUILayout.Height(30))) { idx = (idx + 1) % count; changed = true; }
+        if (GUILayout.Button("›", GUILayout.Width(34), GUILayout.Height(30))) { idx = (idx + 1) % count; changed = true; }
         GUILayout.EndHorizontal();
     }
 

@@ -142,7 +142,7 @@ public partial class SalonDirector
         GUILayout.BeginHorizontal();
         GUILayout.Label("<b>MTBS Bankası · Vezne</b>", h2);
         GUILayout.FlexibleSpace();
-        if (GUILayout.Button("✕", btn, GUILayout.Width(44), GUILayout.Height(36))) { EndPanel(); ClosePanel(); return; }
+        if (GUILayout.Button("×", btn, GUILayout.Width(44), GUILayout.Height(36))) { EndPanel(); ClosePanel(); return; }
         GUILayout.EndHorizontal();
 
         if (!m.Live)
@@ -315,7 +315,7 @@ public partial class SalonDirector
             for (int j = i; j < i + 4 && j < Tiers.Length; j++)
             {
                 int no = j + 1;
-                string n = Tiers[j].ad + (counts.TryGetValue(no, out var c) ? $" ({c})" : "") + (no == mine ? " ★" : "");
+                string n = Tiers[j].ad + (counts.TryGetValue(no, out var c) ? $" ({c})" : "") + (no == mine ? " *" : "");
                 if (GUILayout.Button(n, no == sel ? tabOn : tab, GUILayout.Height(30)))
                 {
                     rankTier = no == mine ? 0 : no;
@@ -349,7 +349,7 @@ public partial class SalonDirector
         for (int i = 0; i < Tiers.Length; i++)
         {
             string ad = $"Sv. {i + 1} · {Tiers[i].ad}";
-            Row(i + 1 == k ? $"<color=#FFD54A><b>{ad}  ◀ sen</b></color>" : ad, Fmt.Mls(Tiers[i].esik) + "+");
+            Row(i + 1 == k ? $"<color=#FFD54A><b>{ad}  ‹ sen</b></color>" : ad, Fmt.Mls(Tiers[i].esik) + "+");
         }
         GUILayout.Label("Sıralamada her oyuncu kendi kademesindeki oyuncularla yarışır; net değerin eşiği geçince bir üst kademeye çıkarsın.", small);
 
@@ -400,6 +400,7 @@ public partial class SalonDirector
         if (GUILayout.Button("Peron B", btn, GUILayout.Height(42))) { GoTo(new Vector3(BotTrader.Lane, 0, 0), Quaternion.identity); Show("Peron B", 1.5f); }
         if (GUILayout.Button("MTBS Bankası veznesi", btn, GUILayout.Height(42))) { GoTo(SalonBuilder.VezneSpot, Quaternion.LookRotation(Vector3.back)); Show("Vezne", 1.5f); }
         if (GUILayout.Button("Düello salonu", btn, GUILayout.Height(42))) { GoTo(SalonBuilder.DuelSpot, Quaternion.LookRotation(Vector3.back)); Show("Düello salonu", 1.5f); }
+        if (GUILayout.Button("Salon kapısı · şehre çıkış", btn, GUILayout.Height(42))) { GoTo(new Vector3(0, 0, -SalonBuilder.HalfD + 4.5f), Quaternion.LookRotation(Vector3.back)); gateAgain = Time.time + 1f; }
         GUILayout.Label("Trade of MTBS hesabıyla yalnız borsa salonundasın. Şehre çıkmak, ev, iş ve dükkânlar için Müteşebbis hesabıyla gir.", small);
     }
 
