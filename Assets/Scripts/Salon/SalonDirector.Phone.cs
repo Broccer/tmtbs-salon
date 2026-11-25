@@ -8,7 +8,8 @@ using UnityEngine;
 /// </summary>
 public partial class SalonDirector
 {
-    static readonly string[] PhoneTabs = { "Hayat", "İş", "Alışveriş", "Emlak", "Galeri", "Müzayede", "Ulaşım", "Ana", "Piyasa", "Portföy", "Haberler", "Sıralama", "Görevler", "Haklar", "Profil" };
+    static readonly string[] MtTabs = { "Hayat", "İş", "Alışveriş", "Emlak", "Galeri", "Müzayede", "Ulaşım", "Ana", "Piyasa", "Portföy", "Haberler", "Sıralama", "Görevler", "Haklar", "Profil" };
+    static string[] PhoneTabs => Market.I != null && Market.I.Tm ? TmTabs : MtTabs;
     int phoneTab;
     bool atComputer;
     readonly Dictionary<string, Dictionary<string, object>> pdata = new Dictionary<string, Dictionary<string, object>>();
@@ -27,6 +28,7 @@ public partial class SalonDirector
         phoneMsg = null;
         pdata.Clear();
         perr.Clear();
+        if (phoneTab >= PhoneTabs.Length) phoneTab = 0;
         LoadTab(phoneTab);
     }
 
@@ -57,7 +59,7 @@ public partial class SalonDirector
         var r = PanelRect(520);
         float iw = BeginPanel(r);
         GUILayout.BeginHorizontal();
-        GUILayout.Label(placeTab != null ? "<b>" + placeTitle + "</b>" : atComputer ? "<b>Ev bilgisayarı</b>" : "<b>Telefon · Müteşebbis</b>", h2);
+        GUILayout.Label(placeTab != null ? "<b>" + placeTitle + "</b>" : atComputer ? "<b>Ev bilgisayarı</b>" : (Market.I.Tm ? "<b>Telefon · Trade of MTBS</b>" : "<b>Telefon · Müteşebbis</b>"), h2);
         GUILayout.FlexibleSpace();
         if (GUILayout.Button("✕", btn, GUILayout.Width(44), GUILayout.Height(36))) { EndPanel(); ClosePanel(); return; }
         GUILayout.EndHorizontal();
@@ -89,7 +91,7 @@ public partial class SalonDirector
     bool NeedLive()
     {
         if (Market.I.Live) return true;
-        GUILayout.Label("Bu bölüm hesabınla giriş yapınca açılır. Demo kipinde yalnız piyasa, portföy (sanal), otobüs ve evdekiler var.", label);
+        GUILayout.Label("Bu bölüm hesabınla giriş yapınca açılır. Demo kipinde yalnız piyasa, portföy (sanal)" + (Market.I.Tm ? "" : ", otobüs ve evdekiler") + " var.", label);
         return false;
     }
 
@@ -122,7 +124,7 @@ public partial class SalonDirector
             GUILayout.Label($"<color={(buy ? "#5BE38A" : "#FF7A7A")}>{(buy ? "AL" : "SAT")}</color> <b>{J.S(o, "isim")}</b> {Fmt.N(J.D(o, "kalan"))} × {Fmt.N2(J.D(o, "fiyat"))}  <size=12>(son {Fmt.N2(J.D(o, "son_fiyat"))})</size>", label);
             GUILayout.FlexibleSpace();
             if (GUILayout.Button("İptal", GUILayout.Width(64), GUILayout.Height(30)))
-                m.CancelOrder(id, 0, (msg, ok) => { phoneMsg = msg; phoneOk = ok; pdata.Remove("ana"); Fetch("ana", "/dunya/piyasa"); });
+                m.CancelOrder(id, 0, (msg, ok) => { phoneMsg = msg; phoneOk = ok; pdata.Remove("ana"); Fetch("ana", m.Tm ? "/tmtbs/ana" : "/dunya/piyasa"); });
             GUILayout.EndHorizontal();
         }
 

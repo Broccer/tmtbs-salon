@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Salondaki bot borsacılar: bankolar arasında koridorlardan dolaşır (sandalye sıralarına girmez).
+/// Salondaki bot borsacılar: peronlar ve duvar bankoları arasındaki koridorlardan dolaşır.
 /// Bir hisse sert hareket edince o bankoya koşar ve "AL! AL!" / "SAT!" diye bağırır.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
@@ -22,14 +22,14 @@ public class BotTrader : MonoBehaviour
     static readonly string[] BuyShouts = { "AL! AL!", "Alıcıyım!", "Yukarı!", "Kaçırma!" };
     static readonly string[] SellShouts = { "SAT!", "Satıcıyım!", "Düşüyor!", "Elden çıkar!" };
 
-    const float Lane = 18.2f;      // banko önü koridoru (|x|)
-    const float CrossZ = -19f;     // sandalyelerin arkasındaki açık alan
+    public const float Lane = 14.5f;   // peron ile yan duvar bankoları arasındaki koridor (|x|)
+    const float CrossZ = 16f;          // peronların önünde / arkasında açık geçiş (±)
 
     void Awake() { rb = GetComponent<Rigidbody>(); }
 
     void Start() { PickWander(); }
 
-    static int SideOf(Vector3 p) => Mathf.Abs(p.x) < 3.5f ? 0 : (int)Mathf.Sign(p.x);
+    static int SideOf(Vector3 p) => Mathf.Abs(p.x) < SalonBuilder.PeronX - 1.8f ? 0 : (int)Mathf.Sign(p.x);
     static float LaneX(int side) => side == 0 ? 0f : side * Lane;
 
     void Route(Vector3 end)
@@ -37,19 +37,16 @@ public class BotTrader : MonoBehaviour
         path.Clear();
         Vector3 start = rb != null ? rb.position : transform.position;
         int a = SideOf(start), b = SideOf(end);
-        bool inChairsZone = end.z > CrossZ + 2f || start.z > CrossZ + 2f;
-        if (a == b || !inChairsZone)
+        float band = SalonBuilder.PeronZ + 2f;   // peron adalarının kapladığı z bandı
+        bool blocked = a != b && Mathf.Abs(start.z) < band + 1f || a != b && Mathf.Abs(end.z) < band + 1f;
+        if (Mathf.Abs(start.x - LaneX(a)) > 0.5f) path.Enqueue(new Vector3(LaneX(a), 0, start.z));
+        if (blocked)
         {
-            if (a != 0 && Mathf.Abs(start.x - LaneX(a)) > 0.5f) path.Enqueue(new Vector3(LaneX(a), 0, start.z));
-            if (b != 0) path.Enqueue(new Vector3(LaneX(b), 0, end.z));
+            float cz = (start.z + end.z) >= 0 ? CrossZ : -CrossZ;
+            path.Enqueue(new Vector3(LaneX(a), 0, cz));
+            path.Enqueue(new Vector3(LaneX(b), 0, cz));
         }
-        else
-        {
-            path.Enqueue(new Vector3(LaneX(a), 0, start.z));
-            path.Enqueue(new Vector3(LaneX(a), 0, CrossZ));
-            path.Enqueue(new Vector3(LaneX(b), 0, CrossZ));
-            path.Enqueue(new Vector3(LaneX(b), 0, end.z));
-        }
+        path.Enqueue(new Vector3(LaneX(b), 0, end.z));
         path.Enqueue(end);
     }
 
@@ -63,7 +60,7 @@ public class BotTrader : MonoBehaviour
             facing = k;
             Route(k.StandPoint(Random.Range(-1, 2)));
         }
-        else Route(new Vector3(Random.Range(-1.5f, 1.5f), 0, Random.Range(-34f, 30f)));
+        else Route(new Vector3(Random.Range(-1.5f, 1.5f), 0, Random.Range(-20f, 20f)));
     }
 
     /// <summary>Sert hareket eden hissenin bankosuna koş ve bağır.</summary>

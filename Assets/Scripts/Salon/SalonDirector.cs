@@ -15,7 +15,7 @@ public partial class SalonDirector : MonoBehaviour
 
     enum View { Login, Forgot, Register, Game }
     View view = View.Login;
-    enum Panel { None, Trade, Phone, Dialog }
+    enum Panel { None, Trade, Phone, Dialog, Credit, Gate }
     Panel panel = Panel.None;
 
     const string EmailKey = "mutesebbis_dunya_email";
@@ -45,6 +45,8 @@ public partial class SalonDirector : MonoBehaviour
         InputReader.Blocked = true;
         PreviewPose();
         try { email = PlayerPrefs.GetString(EmailKey, ""); } catch { }
+        try { loginAcc = PlayerPrefs.GetString("mutesebbis_dunya_hesap", "tm") == "mt" ? Market.Account.Mutesebbis : Market.Account.Tmtbs; } catch { }
+        SocialLogin.Received += OnSocial;
         Market.I.Changed += OnMarket;
         Market.I.LoggedOut += OnLoggedOut;
         busy = true;
@@ -54,11 +56,13 @@ public partial class SalonDirector : MonoBehaviour
             busy = false;
             formMsg = null;
             if (ok) EnterGame();
+            else if (SocialLogin.TakePending(out var sp, out var st, out var sn, out var se)) { loginAcc = Market.Account.Tmtbs; OnSocial(sp, st, sn, se); }
         });
     }
 
     void OnDestroy()
     {
+        SocialLogin.Received -= OnSocial;
         if (Market.I == null) return;
         Market.I.Changed -= OnMarket;
         Market.I.LoggedOut -= OnLoggedOut;
@@ -73,9 +77,24 @@ public partial class SalonDirector : MonoBehaviour
         player.SetName(Market.I.userName);
         player.transform.localScale = Vector3.one;
         player.SetFrozen(false);
+        phoneTab = 0;
+        bool tm = Market.I.Tm;
+        loginAcc = Market.I.account;
+        if (SalonBuilder.TmGate) SalonBuilder.TmGate.SetActive(tm);
+        if (Bell.I) Bell.I.Ring();
+        if (tm)
+        {
+            // Trade of MTBS hesabı: yalnız borsa salonu
+            player.Teleport(new Vector3(0, 0, -SalonBuilder.HalfD + 6f), Quaternion.identity);
+            chase.Snap();
+            fadeUntil = Time.time + 1.5f;
+            gateAgain = Time.time + 3f;
+            Show("Trade of MTBS · Seans salonu", 3f);
+            Hint("Bankolara yaklaş ve al-sat. Arkada MTBS Bankası veznesi ve düello salonu var.", 8f);
+            return;
+        }
         player.Teleport(Town.HomeSpawn, Town.HomeFacing);
         chase.Snap();
-        if (Bell.I) Bell.I.Ring();
         WakeUp();
     }
 
@@ -87,9 +106,12 @@ public partial class SalonDirector : MonoBehaviour
         chase.seated = false;
         InputReader.Blocked = true;
         PreviewPose();
-        formMsg = "Oturum kapandı. Tekrar giriş yapabilirsin.";
+        formMsg = switchToMt ? "Müteşebbis hesabınla giriş yap; şehir seni bekliyor. Hesabın yoksa \"Yeni hesap aç\"." : "Oturum kapandı. Tekrar giriş yapabilirsin.";
+        if (switchToMt) loginAcc = Market.Account.Mutesebbis;
+        switchToMt = false;
         formErr = false;
         foreach (var k in Kiosk.All) k.Bind(null);
+        if (SalonBuilder.TmGate) SalonBuilder.TmGate.SetActive(false);
     }
 
     void OnMarket()
@@ -420,21 +442,34 @@ public partial class SalonDirector : MonoBehaviour
         GUILayout.EndArea();
     }
 
+    Market.Account loginAcc = Market.Account.Tmtbs;
+    bool Tml => loginAcc == Market.Account.Tmtbs;
+
+    void AccountToggle()
+    {
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("Trade of MTBS", Tml ? tabOn : tab, GUILayout.Height(36)) && !Tml) { loginAcc = Market.Account.Tmtbs; formMsg = null; }
+        if (GUILayout.Button("Müteşebbis", !Tml ? tabOn : tab, GUILayout.Height(36)) && Tml) { loginAcc = Market.Account.Mutesebbis; formMsg = null; }
+        GUILayout.EndHorizontal();
+    }
+
     void DrawLogin()
     {
         Dim(0.35f);
         bool narrow = W < 820;
-        float w = Mathf.Min(440, W - 16), h = 470;
-        var r = narrow ? new Rect((W - w) / 2, Mathf.Max(8, H - h - 160), w, h) : new Rect(W - w - 30, (H - h) / 2, w, h);
+        float w = Mathf.Min(440, W - 16), h = Tml ? 620 : 520;
+        h = Mathf.Min(h, H - 16);
+        var r = narrow ? new Rect((W - w) / 2, Mathf.Max(8, H - h - 150), w, h) : new Rect(W - w - 30, Mathf.Max(8, (H - h) / 2), w, h);
         var pr = narrow ? new Rect((W - w) / 2, Mathf.Max(8, r.y - 140), w, 132) : new Rect(24, (H - 160) / 2, 300, 160);
         if (narrow && r.y < 150) { pr = new Rect((W - w) / 2, r.yMax + 6, w, 132); }
-        DrawLookPicker(pr);
+        if (!narrow || pr.yMax <= H) DrawLookPicker(pr);
 
-        GUI.Box(r, GUIContent.none, box);
-        GUILayout.BeginArea(new Rect(r.x + 20, r.y + 14, w - 40, h - 24));
-        GUILayout.Label("MÜTEŞEBBİS", h1);
-        GUILayout.Label("<b>3B Dünya · Müteşebbis hesabınla gir</b>", new GUIStyle(label) { alignment = TextAnchor.MiddleCenter });
-        GUILayout.Space(8);
+        BeginPanel(r);
+        GUILayout.Label(Tml ? "TRADE OF MTBS" : "MÜTEŞEBBİS", h1);
+        GUILayout.Label(Tml ? "<b>3B Borsa salonu · al-sat, sıralama, düello</b>" : "<b>3B Dünya · şehir, ev, iş ve borsa</b>", new GUIStyle(label) { alignment = TextAnchor.MiddleCenter });
+        GUILayout.Space(4);
+        AccountToggle();
+        GUILayout.Space(6);
         GUILayout.Label("E-posta", small);
         email = HtmlInput.Field("eposta", email, "E-posta adresin", field, false, false, 120, GUILayout.Height(38));
         GUILayout.Label("Şifre", small);
@@ -447,8 +482,13 @@ public partial class SalonDirector : MonoBehaviour
         if (GUILayout.Button(busy ? "Bekle…" : "Giriş yap", btn, GUILayout.Height(46)) || (enter && !busy && email.Length > 0 && pass.Length > 0))
             DoLogin();
         GUI.backgroundColor = Color.white;
+        if (Tml)
+        {
+            GUILayout.Space(2);
+            SocialButtons();
+        }
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Yeni hesap aç", GUILayout.Height(34))) { view = View.Register; formMsg = null; }
+        if (GUILayout.Button("Yeni hesap aç", GUILayout.Height(34))) { view = View.Register; formMsg = null; codeSent = false; }
         if (GUILayout.Button("Şifremi unuttum", GUILayout.Height(34)))
         {
             view = View.Forgot;
@@ -459,13 +499,16 @@ public partial class SalonDirector : MonoBehaviour
         GUILayout.Space(4);
         if (GUILayout.Button("Misafir olarak gez (gerçek fiyatlar, sanal para)", GUILayout.Height(38)))
         {
+            Market.I.account = loginAcc;
             Market.I.StartDemo();
             EnterGame();
         }
         GUI.enabled = true;
         FormMessage();
-        GUILayout.Label("Müteşebbis uygulamasındaki ya da mutesebbis.tr'deki hesabınla aynı. Google/Apple ile girdiysen önce \"Şifremi unuttum\" ile şifre koy.", small);
-        GUILayout.EndArea();
+        GUILayout.Label(Tml
+            ? "Trade of MTBS uygulamasındaki hesabınla aynı (Google / Apple dahil). Bu hesapla yalnız borsa salonunda oynarsın; şehir için Müteşebbis hesabı gerekir."
+            : "Müteşebbis uygulamasındaki ya da mutesebbis.tr'deki hesabınla aynı. Google/Apple ile girdiysen önce \"Şifremi unuttum\" ile şifre koy.", small);
+        EndPanel();
     }
 
     void DoLogin()
@@ -473,7 +516,7 @@ public partial class SalonDirector : MonoBehaviour
         busy = true;
         formMsg = null;
         try { PlayerPrefs.SetString(EmailKey, email.Trim()); } catch { }
-        Market.I.Login(email, pass, err =>
+        Market.I.Login(loginAcc, email, pass, err =>
         {
             busy = false;
             pass = "";
@@ -485,70 +528,128 @@ public partial class SalonDirector : MonoBehaviour
     void DrawForgot()
     {
         Dim(0.45f);
-        float w = Mathf.Min(440, W - 16), h = 330;
-        var r = new Rect((W - w) / 2, Mathf.Max(8, (H - h) / 2), w, h);
-        GUI.Box(r, GUIContent.none, box);
-        GUILayout.BeginArea(new Rect(r.x + 20, r.y + 14, w - 40, h - 24));
+        float w = Mathf.Min(440, W - 16), h = Tml && codeSent ? 470 : 340;
+        var r = new Rect((W - w) / 2, Mathf.Max(8, (H - h) / 2), w, Mathf.Min(h, H - 16));
+        BeginPanel(r);
         GUILayout.Label("Şifremi unuttum", h1);
+        GUILayout.Label(Tml ? "<b>Trade of MTBS hesabı</b>" : "<b>Müteşebbis hesabı</b>", new GUIStyle(label) { alignment = TextAnchor.MiddleCenter });
         GUILayout.Label("E-posta", small);
         email = HtmlInput.Field("eposta2", email, "E-posta adresin", field, false, false, 120, GUILayout.Height(38));
         GUILayout.Space(8);
-        GUI.enabled = !busy && !codeSent;
-        if (GUILayout.Button(busy ? "Gönderiliyor…" : "Sıfırlama bağlantısı gönder", btn, GUILayout.Height(44)))
+        GUI.enabled = !busy && (!codeSent || Tml);
+        if (GUILayout.Button(busy ? "Gönderiliyor…" : Tml ? (codeSent ? "Kodu yeniden gönder" : "Sıfırlama kodu gönder") : "Sıfırlama bağlantısı gönder", btn, GUILayout.Height(44)))
         {
             busy = true;
-            Market.I.SendResetCode(email, err =>
+            Market.I.SendResetCode(loginAcc, email, err =>
             {
                 busy = false;
                 if (err != null) { formMsg = err; formErr = true; return; }
                 codeSent = true;
-                formMsg = "Kayıtlı bir hesapsa e-postana şifre sıfırlama bağlantısı gönderildi. Yeni şifreni koyup buradan gir.";
+                formMsg = Tml ? "Kayıtlı bir hesapsa e-postana 6 haneli kod gönderildi." : "Kayıtlı bir hesapsa e-postana şifre sıfırlama bağlantısı gönderildi. Yeni şifreni koyup buradan gir.";
                 formErr = false;
             });
         }
         GUI.enabled = true;
+        if (Tml && codeSent)
+        {
+            GUILayout.Label("E-postadaki kod", small);
+            code = HtmlInput.Field("kod", code, "6 haneli kod", field, false, true, 6, GUILayout.Height(38));
+            GUILayout.Label("Yeni şifre", small);
+            newPass = HtmlInput.Field("yenisifre", newPass, "En az 8 karakter", field, true, false, 64, GUILayout.Height(38));
+            GUI.enabled = !busy;
+            GUI.backgroundColor = new Color(0.35f, 0.8f, 0.5f);
+            if (GUILayout.Button(busy ? "Bekle…" : "Şifreyi değiştir ve gir", btn, GUILayout.Height(44)))
+            {
+                busy = true;
+                Market.I.ResetPasswordTm(email, code, newPass, err =>
+                {
+                    busy = false;
+                    if (err != null) { formMsg = err; formErr = true; return; }
+                    code = newPass = "";
+                    formMsg = null;
+                    EnterGame();
+                });
+            }
+            GUI.backgroundColor = Color.white;
+            GUI.enabled = true;
+        }
         GUILayout.Space(6);
         if (GUILayout.Button("Geri", GUILayout.Height(34))) { view = View.Login; formMsg = null; }
         FormMessage();
-        GUILayout.EndArea();
+        EndPanel();
     }
 
     void DrawRegister()
     {
         Dim(0.45f);
-        float w = Mathf.Min(440, W - 16), h = 440;
-        var r = new Rect((W - w) / 2, Mathf.Max(8, (H - h) / 2), w, h);
-        GUI.Box(r, GUIContent.none, box);
-        GUILayout.BeginArea(new Rect(r.x + 20, r.y + 14, w - 40, h - 24));
-        GUILayout.Label("Yeni Müteşebbis hesabı", h1);
-        GUILayout.Label("Ad soyad", small);
-        regName = HtmlInput.Field("adsoyad", regName, "Adın ve soyadın", field, false, false, 60, GUILayout.Height(38));
-        GUILayout.Label("E-posta", small);
-        email = HtmlInput.Field("eposta3", email, "E-posta adresin", field, false, false, 120, GUILayout.Height(38));
-        GUILayout.Label("Şifre", small);
-        pass = HtmlInput.Field("sifre3", pass, "En az 8 karakter", field, true, false, 64, GUILayout.Height(38));
-        GUILayout.Space(8);
-        GUI.enabled = !busy;
-        GUI.backgroundColor = new Color(0.35f, 0.8f, 0.5f);
-        if (GUILayout.Button(busy ? "Bekle…" : "Hesap aç ve başla", btn, GUILayout.Height(44)))
+        float w = Mathf.Min(440, W - 16), h = Tml ? 560 : 440;
+        var r = new Rect((W - w) / 2, Mathf.Max(8, (H - h) / 2), w, Mathf.Min(h, H - 16));
+        BeginPanel(r);
+        GUILayout.Label(Tml ? "Yeni Trade of MTBS hesabı" : "Yeni Müteşebbis hesabı", h1);
+        if (Tml && codeSent)
         {
-            busy = true;
-            formMsg = null;
-            try { PlayerPrefs.SetString(EmailKey, email.Trim()); } catch { }
-            Market.I.Register(regName, email, pass, err =>
+            GUILayout.Label($"<b>{email.Trim()}</b> adresine 6 haneli onay kodu gönderdik. Kodu yaz, hesabın açılsın.", label);
+            code = HtmlInput.Field("kod2", code, "6 haneli kod", field, false, true, 6, GUILayout.Height(38));
+            GUI.enabled = !busy;
+            GUI.backgroundColor = new Color(0.35f, 0.8f, 0.5f);
+            if (GUILayout.Button(busy ? "Bekle…" : "Onayla ve başla", btn, GUILayout.Height(44)))
             {
-                busy = false;
-                pass = "";
-                if (err != null) { formMsg = err; formErr = true; return; }
-                EnterGame();
-            });
+                busy = true;
+                Market.I.VerifyTm(email, code, err =>
+                {
+                    busy = false;
+                    if (err != null) { formMsg = err; formErr = true; return; }
+                    code = "";
+                    formMsg = null;
+                    EnterGame();
+                });
+            }
+            GUI.backgroundColor = Color.white;
+            if (GUILayout.Button("Kodu yeniden gönder", GUILayout.Height(34)))
+            {
+                busy = true;
+                Market.I.Post("/tmtbs/auth/kod-gonder", new Dictionary<string, object> { { "email", email.Trim() }, { "tip", "onay" } }, (res, err) =>
+                {
+                    busy = false;
+                    formMsg = err ?? "Kod yeniden gönderildi.";
+                    formErr = err != null;
+                });
+            }
+            GUI.enabled = true;
         }
-        GUI.backgroundColor = Color.white;
-        GUI.enabled = true;
+        else
+        {
+            if (Tml) { SocialButtons(); GUILayout.Label("ya da e-postayla:", small); }
+            GUILayout.Label("Ad soyad", small);
+            regName = HtmlInput.Field("adsoyad", regName, "Adın ve soyadın", field, false, false, 60, GUILayout.Height(38));
+            GUILayout.Label("E-posta", small);
+            email = HtmlInput.Field("eposta3", email, "E-posta adresin", field, false, false, 120, GUILayout.Height(38));
+            GUILayout.Label("Şifre", small);
+            pass = HtmlInput.Field("sifre3", pass, "En az 8 karakter", field, true, false, 64, GUILayout.Height(38));
+            GUILayout.Space(8);
+            GUI.enabled = !busy;
+            GUI.backgroundColor = new Color(0.35f, 0.8f, 0.5f);
+            if (GUILayout.Button(busy ? "Bekle…" : "Hesap aç", btn, GUILayout.Height(44)))
+            {
+                busy = true;
+                formMsg = null;
+                try { PlayerPrefs.SetString(EmailKey, email.Trim()); } catch { }
+                Market.I.Register(loginAcc, regName, email, pass, (err, needCode) =>
+                {
+                    busy = false;
+                    pass = "";
+                    if (err != null) { formMsg = err; formErr = true; return; }
+                    if (needCode) { codeSent = true; code = ""; formMsg = "Onay kodu e-postana gönderildi."; formErr = false; return; }
+                    EnterGame();
+                });
+            }
+            GUI.backgroundColor = Color.white;
+            GUI.enabled = true;
+        }
         GUILayout.Space(6);
-        if (GUILayout.Button("Geri", GUILayout.Height(34))) { view = View.Login; formMsg = null; }
+        if (GUILayout.Button("Geri", GUILayout.Height(34))) { view = View.Login; formMsg = null; codeSent = false; }
         FormMessage();
-        GUILayout.EndArea();
+        EndPanel();
     }
 
     // ================================================================ oyun içi üst bilgi
@@ -591,12 +692,14 @@ public partial class SalonDirector : MonoBehaviour
             }
             if (!HtmlInput.Touch)
                 GUI.Label(new Rect(14, H - 30, W - 28, 26),
-                    "W/S yürü · A/D dön · Shift koş · E kullan / konuş (banko, vezne, durak, büfe, dükkân…) · M telefon · Esc kapat", small);
+                    Market.I.Tm ? "W/S yürü · A/D dön · Shift koş · E kullan (banko, vezne, düello) · M telefon · Esc kapat" : "W/S yürü · A/D dön · Shift koş · E kullan / konuş (banko, vezne, durak, büfe, dükkân…) · M telefon · Esc kapat", small);
         }
 
         if (panel == Panel.Trade) DrawTrade();
         else if (panel == Panel.Phone) DrawPhone();
         else if (panel == Panel.Dialog) DrawDialog();
+        else if (panel == Panel.Credit) DrawCredit();
+        else if (panel == Panel.Gate) DrawGate();
         DrawFade();
     }
 }

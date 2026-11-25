@@ -39,6 +39,14 @@ public class Market : MonoBehaviour
     public enum Mode { None, Live, Demo }
     public Mode mode = Mode.None;
 
+    /// <summary>Hangi hesapla girildi: Trade of MTBS hesabı yalnız borsa binasında oynar; Müteşebbis hesabı bütün şehirde.</summary>
+    public enum Account { Mutesebbis, Tmtbs }
+    public Account account = Account.Mutesebbis;
+    public bool Tm => account == Account.Tmtbs;
+    const string AccountKey = "mutesebbis_dunya_hesap";
+    /// <summary>TMTBS kredi durumu (yoksa boş).</summary>
+    public Dictionary<string, object> credit = new Dictionary<string, object>();
+
     public readonly List<Stock> stocks = new List<Stock>();
     public string userName = "";
     public long userId;
@@ -73,23 +81,69 @@ public class Market : MonoBehaviour
 
     // ================================================================ giriş
 
-    public void Login(string email, string pass, Action<string> done)
+    static Dictionary<string, object> Body(params object[] kv)
     {
-        Api.I.Post("/auth/login", new Dictionary<string, object> { { "email", email.Trim() }, { "sifre", pass }, { "cihaz", "dunya-webgl" } },
-            r => { AcceptLogin(r); done(null); },
+        var d = new Dictionary<string, object>();
+        for (int i = 0; i + 1 < kv.Length; i += 2) d[(string)kv[i]] = kv[i + 1];
+        return d;
+    }
+
+    void SetAccount(Account a)
+    {
+        account = a;
+        try { PlayerPrefs.SetString(AccountKey, a == Account.Tmtbs ? "tm" : "mt"); PlayerPrefs.Save(); } catch { }
+    }
+
+    public void Login(Account a, string email, string pass, Action<string> done)
+    {
+        string path = a == Account.Tmtbs ? "/tmtbs/auth/giris" : "/auth/login";
+        Api.I.Post(path, Body("email", email.Trim(), "sifre", pass, "cihaz", "dunya-webgl"),
+            r => { SetAccount(a); AcceptLogin(r); done(null); },
             (m, c) => done(m));
     }
 
-    public void Register(string name, string email, string pass, Action<string> done)
+    /// <summary>Müteşebbis kaydı hemen giriş yapar (done(null, false)); TMTBS kaydı e-posta kodu bekler (done(null, true)).</summary>
+    public void Register(Account a, string name, string email, string pass, Action<string, bool> done)
     {
-        Api.I.Post("/auth/register", new Dictionary<string, object> { { "adsoyad", name.Trim() }, { "email", email.Trim() }, { "sifre", pass }, { "sifre_tekrar", pass }, { "ulke", "Türkiye" }, { "cihaz", "dunya-webgl" } },
-            r => { AcceptLogin(r); done(null); }, (m, c) => done(m));
+        if (a == Account.Tmtbs)
+        {
+            Api.I.Post("/tmtbs/auth/kayit", Body("adsoyad", name.Trim(), "email", email.Trim(), "sifre", pass),
+                r => done(null, true), (m, c) => done(m, false));
+            return;
+        }
+        Api.I.Post("/auth/register", Body("adsoyad", name.Trim(), "email", email.Trim(), "sifre", pass, "sifre_tekrar", pass, "ulke", "Türkiye", "cihaz", "dunya-webgl"),
+            r => { SetAccount(a); AcceptLogin(r); done(null, false); }, (m, c) => done(m, false));
     }
 
-    public void SendResetCode(string email, Action<string> done)
+    /// <summary>TMTBS: e-postadaki 6 haneli onay koduyla hesabı açar ve girer.</summary>
+    public void VerifyTm(string email, string code, Action<string> done)
     {
-        Api.I.Post("/auth/sifremi-unuttum", new Dictionary<string, object> { { "email", email.Trim() } },
-            r => done(null), (m, c) => done(m));
+        Api.I.Post("/tmtbs/auth/dogrula", Body("email", email.Trim(), "kod", code.Trim(), "cihaz", "dunya-webgl"),
+            r => { SetAccount(Account.Tmtbs); AcceptLogin(r); done(null); }, (m, c) => done(m));
+    }
+
+    /// <summary>Müteşebbis: sıfırlama bağlantısı; TMTBS: 6 haneli kod.</summary>
+    public void SendResetCode(Account a, string email, Action<string> done)
+    {
+        if (a == Account.Tmtbs)
+            Api.I.Post("/tmtbs/auth/kod-gonder", Body("email", email.Trim(), "tip", "sifre"), r => done(null), (m, c) => done(m));
+        else
+            Api.I.Post("/auth/sifremi-unuttum", Body("email", email.Trim()), r => done(null), (m, c) => done(m));
+    }
+
+    public void ResetPasswordTm(string email, string code, string newPass, Action<string> done)
+    {
+        Api.I.Post("/tmtbs/auth/sifre-yenile", Body("email", email.Trim(), "kod", code.Trim(), "sifre", newPass, "cihaz", "dunya-webgl"),
+            r => { SetAccount(Account.Tmtbs); AcceptLogin(r); done(null); }, (m, c) => done(m));
+    }
+
+    /// <summary>TMTBS: Google / Apple kimlik jetonuyla giriş (hesap yoksa açılır).</summary>
+    public void SocialLoginTm(string provider, string token, string name, Action<string> done)
+    {
+        var body = provider == "apple" ? Body("identity_token", token, "adsoyad", name ?? "", "cihaz", "dunya-webgl")
+                                       : Body("id_token", token, "adsoyad", name ?? "", "cihaz", "dunya-webgl");
+        Api.I.Post("/tmtbs/auth/" + (provider == "apple" ? "apple" : "google"), body,
+            r => { SetAccount(Account.Tmtbs); AcceptLogin(r); done(null); }, (m, c) => done(m));
     }
 
     void AcceptLogin(Dictionary<string, object> r)
@@ -100,11 +154,14 @@ public class Market : MonoBehaviour
         StartLive();
     }
 
-    /// <summary>Kayıtlı jeton varsa doğrudan canlı kipe geçer.</summary>
+    /// <summary>Kayıtlı jeton varsa doğrudan canlı kipe geçer (hangi hesapla girildiği de saklıdır).</summary>
     public void TryResume(Action<bool> done)
     {
         if (!Api.I.HasToken) { done(false); return; }
-        Api.I.Get("/me", r =>
+        string acc = "mt";
+        try { acc = PlayerPrefs.GetString(AccountKey, "mt"); } catch { }
+        account = acc == "tm" ? Account.Tmtbs : Account.Mutesebbis;
+        Api.I.Get(Tm ? "/tmtbs/ben" : "/me", r =>
         {
             userName = J.S(J.O(r, "user"), "adsoyad");
             userId = J.L(J.O(r, "user"), "id");
@@ -117,13 +174,15 @@ public class Market : MonoBehaviour
         });
     }
 
+
     public void Logout()
     {
-        if (mode == Mode.Live && Api.I.HasToken) Api.I.Post("/auth/logout", null, null, null);
+        if (mode == Mode.Live && Api.I.HasToken) Api.I.Post(Tm ? "/tmtbs/auth/cikis" : "/auth/logout", null, null, null);
         Api.I.SetToken("");
         mode = Mode.None;
         stocks.Clear();
         dash.Clear();
+        credit.Clear();
         rights.Clear();
         portfolio.Clear();
         nextOrder = 0;
@@ -147,13 +206,14 @@ public class Market : MonoBehaviour
         if (mode != Mode.Live || refreshing) return;
         refreshing = true;
         lastRefresh = Time.time;
-        Api.I.Get("/borsa", r =>
+        Api.I.Get(Tm ? "/tmtbs/piyasa" : "/borsa", r =>
         {
             ApplyList(J.A(r, "liste"));
-            ApplyBorsa(r);
-            Api.I.Get("/dashboard", d =>
+            if (!Tm) ApplyBorsa(r);
+            else ApplyFavorites(J.A(r, "favoriler"));
+            Api.I.Get(Tm ? "/tmtbs/durum" : "/dashboard", d =>
             {
-                ApplyDash(d);
+                if (Tm) ApplyTmStatus(d); else ApplyDash(d);
                 refreshing = false;
                 status = "Canlı · " + DateTime.Now.ToString("HH:mm:ss");
                 Changed?.Invoke();
@@ -165,6 +225,11 @@ public class Market : MonoBehaviour
     public void RefreshStatus(Action done = null)
     {
         if (mode != Mode.Live) { done?.Invoke(); return; }
+        if (Tm)
+        {
+            Api.I.Get("/tmtbs/durum", d => { ApplyTmStatus(d); Changed?.Invoke(); done?.Invoke(); }, (m, c) => done?.Invoke());
+            return;
+        }
         Api.I.Get("/dashboard", d =>
         {
             ApplyDash(d);
@@ -231,6 +296,19 @@ public class Market : MonoBehaviour
         net = cash + stockValue;
     }
 
+    void ApplyTmStatus(Dictionary<string, object> d)
+    {
+        cash = J.D(d, "para");
+        var u = J.O(d, "user");
+        string n = J.S(u, "adsoyad");
+        if (!string.IsNullOrEmpty(n)) userName = n;
+        if (J.L(u, "id") > 0) userId = J.L(u, "id");
+        credit = J.O(d, "kredi");
+        ApplyBorsa(d);
+        stockValue = J.D(d, "hisse_degeri");
+        net = J.D(d, "net_deger");
+    }
+
     void ApplyBorsa(Dictionary<string, object> d)
     {
         rights = J.A(d, "haklar");
@@ -256,7 +334,7 @@ public class Market : MonoBehaviour
     public void LoadDetail(Stock s, Action done, long duel = 0)
     {
         if (mode == Mode.Demo) { DemoBook(s); done?.Invoke(); return; }
-        Api.I.Get("/borsa/" + s.id, r => { ApplyDetail(s, J.O(r, "borsa")); done?.Invoke(); },
+        Api.I.Get(Tm ? "/tmtbs/hisse/" + s.id + (duel > 0 ? "?duello=" + duel : "") : "/borsa/" + s.id, r => { ApplyDetail(s, J.O(r, "borsa")); done?.Invoke(); },
             (m, c) => { status = m; done?.Invoke(); });
     }
 
@@ -301,8 +379,8 @@ public class Market : MonoBehaviour
         if (mode == Mode.Demo) { DemoOrder(s, buy, qty, px, done); return; }
 
         var body = new Dictionary<string, object> { { "yon", buy ? "al" : "sat" }, { "fiyat", px }, { "adet", qty } };
-        if (duel > 0) body["duello"] = duel;
-        Api.I.Post("/borsa/" + s.id + "/emir", body, r =>
+        if (duel > 0 && Tm) body["duello"] = duel;
+        Api.I.Post(Tm ? "/tmtbs/hisse/" + s.id + "/emir" : "/borsa/" + s.id + "/emir", body, r =>
         {
             long done_ = J.L(r, "islem_adet");
             ApplyDetail(s, J.O(r, "borsa"));
@@ -320,13 +398,14 @@ public class Market : MonoBehaviour
         if (mode != Mode.Live) { done("Demo kipinde emir defteri yok.", false); return; }
         var body = new Dictionary<string, object>();
         if (duel > 0) body["duello"] = duel;
-        Api.I.Post("/borsa/emir/" + orderId + "/iptal", body, r => { done("Emir iptal edildi.", true); lastRefresh = -999f; }, (m, c) => done(m, false));
+        if (duel > 0 && Tm) body["duello"] = duel;
+        Api.I.Post(Tm ? "/tmtbs/emir/" + orderId + "/iptal" : "/borsa/emir/" + orderId + "/iptal", body, r => { done("Emir iptal edildi.", true); lastRefresh = -999f; }, (m, c) => done(m, false));
     }
 
     public void ToggleFavorite(Stock s, Action<string> done)
     {
         if (mode != Mode.Live) { s.favorite = !s.favorite; done?.Invoke(null); return; }
-        Api.I.Post("/borsa/" + s.id + "/favori", null, r => { s.favorite = J.B(r, "favori"); Changed?.Invoke(); done?.Invoke(null); },
+        Api.I.Post(Tm ? "/tmtbs/hisse/" + s.id + "/favori" : "/borsa/" + s.id + "/favori", null, r => { s.favorite = J.B(r, "favori"); Changed?.Invoke(); done?.Invoke(null); },
             (m, c) => done?.Invoke(m));
     }
 
@@ -345,11 +424,33 @@ public class Market : MonoBehaviour
         Api.I.Post(path, body, r => done(r, null), (m, c) => done(null, c == 404 ? "Bu işlem sunucuda henüz açık değil." : m));
     }
 
+    public void CreditDraw(Action<string, bool> done)
+    {
+        Post("/tmtbs/kredi/cek", null, (r, err) =>
+        {
+            if (err != null) { done(err, false); return; }
+            credit = J.O(r, "kredi");
+            RefreshStatus();
+            done($"{Fmt.Mls(J.D(r, "yatan"))} hesabına yatırıldı.", true);
+        });
+    }
+
+    public void CreditPay(long amount, Action<string, bool> done)
+    {
+        Post("/tmtbs/kredi/ode", new Dictionary<string, object> { { "tutar", amount } }, (r, err) =>
+        {
+            if (err != null) { done(err, false); return; }
+            credit = J.O(r, "kredi");
+            RefreshStatus();
+            done($"{Fmt.Mls(J.D(r, "odenen"))} borcuna ödendi.", true);
+        });
+    }
+
     public void AnswerRight(long rightId, bool join, long qty, Action<string, bool> done)
     {
         var body = new Dictionary<string, object> { { "katil", join } };
         if (join && qty > 0) body["adet"] = qty;
-        Post("/borsa/artirim/" + rightId, body, (r, err) =>
+        Post((Tm ? "/tmtbs/artirim/" : "/borsa/artirim/") + rightId, body, (r, err) =>
         {
             if (err != null) { done(err, false); return; }
             rights = J.A(r, "haklar");
@@ -383,6 +484,7 @@ public class Market : MonoBehaviour
         userName = "Misafir";
         cash = 100000;
         dash = new Dictionary<string, object>();
+        credit = new Dictionary<string, object>();
         RecalcDemo();
         status = "Demo · gerçek fiyatlar yükleniyor…";
         Changed?.Invoke();

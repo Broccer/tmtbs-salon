@@ -30,7 +30,8 @@ public partial class SalonDirector
         chart = null;
         duel = 0;
         Market.I.LoadDetail(s, () => { if (trade == s && string.IsNullOrEmpty(priceText)) priceText = PxText(s.price); });
-        activeDuels.Clear(); // düello yalnız Trade of MTBS hesabında var
+        activeDuels.Clear();
+        if (Market.I.Tm && Market.I.Live) LoadDuelAccounts();
     }
 
     static double ParsePrice(string t)
@@ -93,6 +94,7 @@ public partial class SalonDirector
         else if (tradeTab == 1) DrawBook(s, iw);
         else if (tradeTab == 2) DrawChart(iw);
         else DrawInfo(s);
+        if (Market.I.Tm) TradeRulesNote(s);
 
         GUILayout.Space(10);
         if (GUILayout.Button("Kapat (Esc)", GUILayout.Height(36))) { EndPanel(); ClosePanel(); return; }
@@ -255,7 +257,7 @@ public partial class SalonDirector
         if (!Market.I.Live) { chart = new Dictionary<string, object> { { "_hata", "Grafik hesabınla giriş yapınca görünür." } }; return; }
         chartBusy = true;
         var s = trade;
-        Market.I.Get("/dunya/grafik/" + s.id + "?aralik=" + chartRange, (r, err) =>
+        Market.I.Get((Market.I.Tm ? "/tmtbs/hisse/" + s.id + "/grafik?aralik=" : "/dunya/grafik/" + s.id + "?aralik=") + chartRange, (r, err) =>
         {
             chartBusy = false;
             if (trade != s) return;

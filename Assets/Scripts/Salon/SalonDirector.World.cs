@@ -24,7 +24,7 @@ public partial class SalonDirector
     float fadeUntil;
     int seenDash = -1;
 
-    string CurrentTab => placeTab ?? PhoneTabs[phoneTab];
+    string CurrentTab => placeTab ?? PhoneTabs[Mathf.Clamp(phoneTab, 0, PhoneTabs.Length - 1)];
 
     // ================================================================ giriş / dünya verisi
 
@@ -95,6 +95,13 @@ public partial class SalonDirector
             if (ev.Count > 0)
                 Town.LevelSign.text = $"EV SEVİYESİ {Fmt.N(J.D(ev, "seviye"))}\n<size=60>{Cut(J.S(ev, "ev_adi"), 24)}</size>";
         }
+        if (m.Tm)
+        {
+            // Trade of MTBS: salon kapısına yaklaşınca Müteşebbis yönlendirmesi
+            if (panel == Panel.None && Time.time > gateAgain && player.transform.position.z < -SalonBuilder.HalfD + 2.6f && Mathf.Abs(player.transform.position.x) < SeljukBuilding.DoorW / 2f + 0.5f)
+                OpenGate();
+            return;
+        }
         if (panel != Panel.None || fatherAutoShown || Town.Father == null || !allowanceKnown) return;
         if (m.Live && allowanceTaken) { fatherAutoShown = true; return; }
         if ((player.transform.position - Town.Father.position).Flat().magnitude < 3.6f)
@@ -108,7 +115,15 @@ public partial class SalonDirector
     {
         switch (it.kind)
         {
-            case Interactable.Kind.Teller: OpenPlace("Fatura", "MTBS Bankası · Vezne", 0); return true;
+            case Interactable.Kind.Teller:
+                if (Market.I.Tm) OpenCredit();
+                else OpenPlace("Fatura", it.arg == 1 ? "MTBS Bankası · Salon veznesi" : "MTBS Bankası · Vezne", 0);
+                return true;
+            case Interactable.Kind.Door: OpenGate(); return true;
+            case Interactable.Kind.Duel:
+                if (Market.I.Tm) OpenPlace("Düello", "Düello Salonu", 0);
+                else Hint("Düello Trade of MTBS hesabıyla oynanır. Menü → Profil → çıkış yapıp Trade of MTBS ile gir.", 5f);
+                return true;
             case Interactable.Kind.BusStop: OpenPlace("Otobüs", "Durak · " + City.Stops[it.arg].name, it.arg); return true;
             case Interactable.Kind.Buffet: OpenPlace("Büfe", "Büfe · " + City.Stops[it.arg].name, it.arg); return true;
             case Interactable.Kind.JobCenter: OpenPlace("İş", "İş Bulma Merkezi", 0); return true;
@@ -141,6 +156,7 @@ public partial class SalonDirector
     void LoadTabName(string tab)
     {
         var m = Market.I;
+        if (m.Tm && LoadTm(tab)) return;
         switch (tab)
         {
             case "Ana": Fetch("ana", "/dunya/piyasa"); break;
@@ -164,6 +180,7 @@ public partial class SalonDirector
 
     void DrawTabName(string tab)
     {
+        if (Market.I.Tm && DrawTm(tab)) return;
         switch (tab)
         {
             case "Ana": TabHome(); break;

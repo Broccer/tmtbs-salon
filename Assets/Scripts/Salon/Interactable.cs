@@ -8,7 +8,7 @@ public class Interactable : MonoBehaviour
 {
     public static readonly List<Interactable> All = new List<Interactable>();
 
-    public enum Kind { Counter, Teller, Seat, Computer, BusStop, Buffet, JobCenter, Estate, CarDealer, Auction, Shop, Parent }
+    public enum Kind { Counter, Teller, Seat, Computer, BusStop, Buffet, JobCenter, Estate, CarDealer, Auction, Shop, Parent, Duel, Door }
     public Kind kind;
     public string prompt = "";
     public string buttonLabel = "İŞLEM";
