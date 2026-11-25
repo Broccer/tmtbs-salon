@@ -349,7 +349,7 @@ public partial class SalonDirector
         for (int i = 0; i < Tiers.Length; i++)
         {
             string ad = $"Sv. {i + 1} · {Tiers[i].ad}";
-            Row(i + 1 == k ? $"<color=#FFD54A><b>{ad}  ‹ sen</b></color>" : ad, Fmt.Mls(Tiers[i].esik) + "+");
+            Row(i + 1 == k ? $"<color=#FFD54A><b>{ad} Â· sen</b></color>" : ad, Fmt.Mls(Tiers[i].esik) + "+");
         }
         GUILayout.Label("Sıralamada her oyuncu kendi kademesindeki oyuncularla yarışır; net değerin eşiği geçince bir üst kademeye çıkarsın.", small);
 

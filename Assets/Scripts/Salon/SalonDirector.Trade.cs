@@ -128,9 +128,9 @@ public partial class SalonDirector
             GUILayout.Label($"Fiyat (kademe {Fmt.N2(Tick.Step(limitPx > 0 ? limitPx : s.price))})" +
                 (s.minPrice > 0 && s.maxPrice > 0 ? $" · bugünkü bant {Fmt.N2(s.minPrice)} – {Fmt.N2(s.maxPrice)}" : ""), small);
             GUILayout.BeginHorizontal();
-            if (GUILayout.Button("‹", GUILayout.Width(48), GUILayout.Height(38))) priceText = PxText(Tick.Down(limitPx > 0 ? limitPx : s.price));
+            if (GUILayout.Button("<", GUILayout.Width(48), GUILayout.Height(38))) priceText = PxText(Tick.Down(limitPx > 0 ? limitPx : s.price));
             priceText = HtmlInput.Field("fiyat", priceText, "Limit fiyat (MLS)", field, false, true, 12, GUILayout.Height(38), GUILayout.MinWidth(90));
-            if (GUILayout.Button("›", GUILayout.Width(48), GUILayout.Height(38))) priceText = PxText(Tick.Up(limitPx > 0 ? limitPx : s.price));
+            if (GUILayout.Button(">", GUILayout.Width(48), GUILayout.Height(38))) priceText = PxText(Tick.Up(limitPx > 0 ? limitPx : s.price));
             GUILayout.EndHorizontal();
             GUILayout.BeginHorizontal();
             if (s.bestBid > 0 && GUILayout.Button("En iyi alış " + Fmt.N2(s.bestBid), GUILayout.Height(30))) priceText = PxText(s.bestBid);
