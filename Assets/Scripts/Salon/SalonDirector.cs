@@ -249,23 +249,92 @@ public partial class SalonDirector : MonoBehaviour
         right = new GUIStyle(label) { alignment = TextAnchor.UpperRight, wordWrap = false };
         small = new GUIStyle(label) { fontSize = 13 };
         small.normal.textColor = new Color(0.7f, 0.74f, 0.82f);
-        var bg = new Texture2D(1, 1);
-        bg.SetPixel(0, 0, new Color(0.06f, 0.08f, 0.13f, 0.93f));
-        bg.Apply();
-        box = new GUIStyle(GUI.skin.box) { padding = new RectOffset(14, 14, 10, 10) };
-        box.normal.background = bg;
+        Theme();
+        box = new GUIStyle(GUI.skin.box) { padding = new RectOffset(14, 14, 10, 10), border = new RectOffset(20, 20, 20, 20) };
+        box.normal.background = RTex(64, 64, 16, new Color(0.09f, 0.11f, 0.17f, 0.97f), new Color(0.05f, 0.06f, 0.10f, 0.97f), new Color(1f, 0.82f, 0.35f, 0.45f), 1.5f);
         btn = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold, richText = true };
-        field = new GUIStyle(GUI.skin.textField) { fontSize = 17, padding = new RectOffset(8, 8, 6, 6) };
+        field = new GUIStyle(GUI.skin.textField) { fontSize = 17, padding = new RectOffset(10, 10, 7, 7) };
         big = new GUIStyle(h1) { fontSize = 40 };
         big.normal.textColor = Color.white;
-        tab = new GUIStyle(GUI.skin.button) { fontSize = 14, richText = true };
+        tab = new GUIStyle(GUI.skin.button) { fontSize = 14, richText = true, margin = new RectOffset(2, 2, 2, 2) };
+        tab.normal.background = RTex(32, 32, 9, new Color(1, 1, 1, 0.07f), new Color(1, 1, 1, 0.04f), new Color(1, 1, 1, 0.12f), 1f);
+        tab.hover.background = RTex(32, 32, 9, new Color(1, 1, 1, 0.14f), new Color(1, 1, 1, 0.09f), new Color(1, 1, 1, 0.2f), 1f);
+        tab.active.background = tab.hover.background;
+        tab.normal.textColor = tab.hover.textColor = tab.active.textColor = new Color(0.78f, 0.82f, 0.9f);
         tabOn = new GUIStyle(tab) { fontStyle = FontStyle.Bold };
-        tabOn.normal.textColor = tabOn.hover.textColor = new Color(1f, 0.84f, 0.3f);
+        tabOn.normal.background = tabOn.hover.background = tabOn.active.background =
+            RTex(32, 32, 9, new Color(1f, 0.84f, 0.3f, 0.30f), new Color(1f, 0.7f, 0.2f, 0.22f), new Color(1f, 0.84f, 0.3f, 0.85f), 1.5f);
+        tabOn.normal.textColor = tabOn.hover.textColor = tabOn.active.textColor = new Color(1f, 0.88f, 0.45f);
+        shadowTex = RTex(64, 64, 22, new Color(0, 0, 0, 0.5f), new Color(0, 0, 0, 0.5f), new Color(0, 0, 0, 0), 0f, 10f);
+    }
+
+    /// <summary>Tuşların varsayılan rengi (renkli tuşlardan sonra buna dönülür).</summary>
+    public static readonly Color BtnBase = new Color(0.30f, 0.36f, 0.50f);
+    Texture2D shadowTex;
+
+    /// <summary>Yuvarlak köşeli, dikey geçişli, kenarlıklı doku (9 dilimli kullanılır). soft &gt; 0: yumuşak kenar (gölge).</summary>
+    static Texture2D RTex(int w, int h, float rad, Color top, Color bottom, Color border, float bw, float soft = 0f)
+    {
+        var t = new Texture2D(w, h, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
+        var px = new Color[w * h];
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                float cx = Mathf.Clamp(x + 0.5f, rad, w - rad), cy = Mathf.Clamp(y + 0.5f, rad, h - rad);
+                float d = rad - Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(cx, cy)); // kenara uzaklık (içeride +)
+                float a = soft > 0 ? Mathf.Clamp01(d / soft) : Mathf.Clamp01(d + 0.5f);
+                Color c = Color.Lerp(bottom, top, y / (float)(h - 1));
+                if (bw > 0) c = Color.Lerp(c, new Color(border.r, border.g, border.b, Mathf.Max(c.a, border.a)), Mathf.Clamp01(bw + 0.5f - d) * border.a);
+                c.a *= a;
+                px[y * w + x] = c;
+            }
+        t.SetPixels(px);
+        t.Apply();
+        return t;
+    }
+
+    /// <summary>Varsayılan Unity görünümü yerine koyu, yuvarlak köşeli tema (tüm tuş/alan/kaydırma çubukları).</summary>
+    static void Theme()
+    {
+        var s = GUI.skin;
+        var b = s.button;
+        b.normal.background = RTex(32, 32, 9, new Color(1, 1, 1), new Color(0.82f, 0.84f, 0.88f), new Color(1, 1, 1, 0.5f), 1f);
+        b.hover.background = RTex(32, 32, 9, new Color(1, 1, 1), new Color(0.92f, 0.93f, 0.96f), new Color(1, 1, 1, 0.9f), 1.2f);
+        b.active.background = RTex(32, 32, 9, new Color(0.78f, 0.8f, 0.85f), new Color(0.9f, 0.9f, 0.94f), new Color(1, 1, 1, 0.5f), 1f);
+        b.focused.background = b.normal.background;
+        b.onNormal.background = b.onHover.background = b.onActive.background = b.active.background;
+        b.border = new RectOffset(10, 10, 10, 10);
+        b.normal.textColor = b.hover.textColor = b.active.textColor = b.focused.textColor = Color.white;
+        b.fontSize = Mathf.Max(b.fontSize, 14);
+        b.richText = true;
+        b.margin = new RectOffset(3, 3, 3, 3);
+
+        var f = s.textField;
+        f.normal.background = RTex(32, 32, 8, new Color(0.03f, 0.04f, 0.07f, 0.95f), new Color(0.05f, 0.06f, 0.1f, 0.95f), new Color(1, 1, 1, 0.18f), 1f);
+        f.hover.background = RTex(32, 32, 8, new Color(0.04f, 0.05f, 0.09f, 0.95f), new Color(0.06f, 0.07f, 0.11f, 0.95f), new Color(1, 1, 1, 0.32f), 1f);
+        f.focused.background = f.onFocused.background = RTex(32, 32, 8, new Color(0.04f, 0.05f, 0.09f, 0.97f), new Color(0.06f, 0.07f, 0.11f, 0.97f), new Color(1f, 0.82f, 0.35f, 0.9f), 1.5f);
+        f.border = new RectOffset(9, 9, 9, 9);
+        f.normal.textColor = f.hover.textColor = f.focused.textColor = Color.white;
+
+        var sb = s.verticalScrollbar;
+        sb.normal.background = RTex(12, 32, 5, new Color(1, 1, 1, 0.05f), new Color(1, 1, 1, 0.05f), new Color(0, 0, 0, 0), 0f);
+        sb.border = new RectOffset(5, 5, 6, 6);
+        sb.fixedWidth = 10;
+        var th = s.verticalScrollbarThumb;
+        th.normal.background = RTex(12, 32, 5, new Color(1f, 0.85f, 0.45f, 0.55f), new Color(1f, 0.75f, 0.3f, 0.55f), new Color(0, 0, 0, 0), 0f);
+        th.border = new RectOffset(5, 5, 6, 6);
+        th.fixedWidth = 10;
+
+        var tg = s.toggle;
+        tg.normal.textColor = tg.hover.textColor = tg.active.textColor = new Color(0.85f, 0.88f, 0.94f);
+        tg.onNormal.textColor = tg.onHover.textColor = tg.onActive.textColor = new Color(1f, 0.88f, 0.45f);
+        tg.fontSize = Mathf.Max(tg.fontSize, 14);
     }
 
     void OnGUI()
     {
         Styles();
+        GUI.backgroundColor = BtnBase;
         float baseSize = HtmlInput.Touch ? 430f : 720f;
         scale = Mathf.Clamp(Mathf.Min(Screen.width, Screen.height) / baseSize, 0.7f, 4f);
         GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
@@ -276,6 +345,8 @@ public partial class SalonDirector : MonoBehaviour
         else if (view == View.Forgot) DrawForgot();
         else if (view == View.Register) DrawRegister();
         else DrawGame();
+
+        DemoBadge();
 
         if (!string.IsNullOrEmpty(banner) && Time.time < bannerUntil)
             GUI.Label(new Rect(0, H * 0.2f, W, 60), banner, big);
@@ -294,7 +365,13 @@ public partial class SalonDirector : MonoBehaviour
     /// <summary>Panel çerçevesi + kaydırma alanı (dokunmatikte sürükleyerek kaydırılır). Dönüş: iç genişlik.</summary>
     float BeginPanel(Rect r)
     {
-        GUI.Box(r, GUIContent.none, box);
+        DrawShadow(r);
+        PanelBox(r);
+        // Üst kenarda ince altın vurgu
+        Color oc = GUI.color;
+        GUI.color = new Color(1f, 0.82f, 0.35f, 0.75f);
+        GUI.DrawTexture(new Rect(r.x + 18, r.y + 1, r.width - 36, 2), Texture2D.whiteTexture);
+        GUI.color = oc;
         var e = Event.current;
         if (e.type == EventType.MouseDrag && r.Contains(e.mousePosition) && HtmlInput.Touch)
         {
@@ -305,6 +382,54 @@ public partial class SalonDirector : MonoBehaviour
         GUILayout.BeginArea(new Rect(r.x + 12, r.y + 10, r.width - 24, r.height - 18));
         scroll = GUILayout.BeginScrollView(scroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar);
         return r.width - 24 - 18;
+    }
+
+    GUIStyle demoStyle;
+    Texture2D demoTex;
+
+    /// <summary>Sol altta her zaman görünen "3B DEMO" rozeti: bu sürümün deneme olduğunu belirtir.</summary>
+    void DemoBadge()
+    {
+        if (demoStyle == null)
+        {
+            demoTex = RTex(32, 32, 10, new Color(1f, 0.55f, 0.15f, 0.92f), new Color(0.9f, 0.4f, 0.1f, 0.92f), new Color(1, 1, 1, 0.5f), 1f);
+            demoStyle = new GUIStyle(GUI.skin.label) { fontSize = 12, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, richText = true, border = new RectOffset(10, 10, 10, 10) };
+            demoStyle.normal.background = demoTex;
+            demoStyle.normal.textColor = Color.white;
+        }
+        const string t = "3B DEMO · geliştirme sürümü";
+        float w = 210;
+        Color ob = GUI.backgroundColor;
+        GUI.backgroundColor = Color.white;
+        GUI.Label(new Rect(8, H - 30, w, 22), t, demoStyle);
+        GUI.backgroundColor = ob;
+    }
+
+    /// <summary>Koyu panel kutusu (tema rengiyle boyanmaz).</summary>
+    void PanelBox(Rect r)
+    {
+        Color old = GUI.backgroundColor;
+        GUI.backgroundColor = Color.white;
+        GUI.Box(r, GUIContent.none, box);
+        GUI.backgroundColor = old;
+    }
+
+    /// <summary>Sekme tuşu: seçili olan altın vurgulu (tema rengiyle boyanmaz).</summary>
+    bool TabBtn(string text, bool on, float h)
+    {
+        Color old = GUI.backgroundColor;
+        GUI.backgroundColor = Color.white;
+        bool r = GUILayout.Button(text, on ? tabOn : tab, GUILayout.Height(h));
+        GUI.backgroundColor = old;
+        return r;
+    }
+
+    void DrawShadow(Rect r)
+    {
+        if (shadowTex == null || Event.current.type != EventType.Repaint) return;
+        var st = new GUIStyle { border = new RectOffset(24, 24, 24, 24) };
+        st.normal.background = shadowTex;
+        st.Draw(new Rect(r.x - 8, r.y - 4, r.width + 16, r.height + 16), false, false, false, false);
     }
 
     void EndPanel()
@@ -414,7 +539,7 @@ public partial class SalonDirector : MonoBehaviour
     /// <summary>Borsacını seç. Mixamo modelleri varsa model seçimi, yoksa ilkel gövde seçenekleri.</summary>
     void DrawLookPicker(Rect r)
     {
-        GUI.Box(r, GUIContent.none, box);
+        PanelBox(r);
         GUILayout.BeginArea(new Rect(r.x + 14, r.y + 10, r.width - 28, r.height - 16));
         GUILayout.Label("<b>Borsacını seç</b>", h2);
         if (Characters.Available)
@@ -451,8 +576,8 @@ public partial class SalonDirector : MonoBehaviour
     void AccountToggle()
     {
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Trade of MTBS", Tml ? tabOn : tab, GUILayout.Height(36)) && !Tml) { loginAcc = Market.Account.Tmtbs; formMsg = null; }
-        if (GUILayout.Button("Müteşebbis", !Tml ? tabOn : tab, GUILayout.Height(36)) && Tml) { loginAcc = Market.Account.Mutesebbis; formMsg = null; }
+        if (TabBtn("Trade of MTBS", Tml, 36) && !Tml) { loginAcc = Market.Account.Tmtbs; formMsg = null; }
+        if (TabBtn("Müteşebbis", !Tml, 36) && Tml) { loginAcc = Market.Account.Mutesebbis; formMsg = null; }
         GUILayout.EndHorizontal();
     }
 
@@ -469,6 +594,7 @@ public partial class SalonDirector : MonoBehaviour
 
         BeginPanel(r);
         GUILayout.Label(Tml ? "TRADE OF MTBS" : "MÜTEŞEBBİS", h1);
+        GUILayout.Label("<color=#FFB74A><b>3B DEMO</b> · deneme sürümü: hesabın, paran ve hisselerin gerçek oyundakiyle aynıdır</color>", new GUIStyle(small) { alignment = TextAnchor.MiddleCenter });
         GUILayout.Label(Tml ? "<b>3B Borsa salonu · al-sat, sıralama, düello</b>" : "<b>3B Dünya · şehir, ev, iş ve borsa</b>", new GUIStyle(label) { alignment = TextAnchor.MiddleCenter });
         GUILayout.Space(4);
         AccountToggle();
@@ -484,7 +610,7 @@ public partial class SalonDirector : MonoBehaviour
         GUI.backgroundColor = new Color(0.35f, 0.6f, 1f);
         if (GUILayout.Button(busy ? "Bekle…" : "Giriş yap", btn, GUILayout.Height(46)) || (enter && !busy && email.Length > 0 && pass.Length > 0))
             DoLogin();
-        GUI.backgroundColor = Color.white;
+        GUI.backgroundColor = SalonDirector.BtnBase;
         if (Tml)
         {
             GUILayout.Space(2);
@@ -573,7 +699,7 @@ public partial class SalonDirector : MonoBehaviour
                     EnterGame();
                 });
             }
-            GUI.backgroundColor = Color.white;
+            GUI.backgroundColor = SalonDirector.BtnBase;
             GUI.enabled = true;
         }
         GUILayout.Space(6);
@@ -607,7 +733,7 @@ public partial class SalonDirector : MonoBehaviour
                     EnterGame();
                 });
             }
-            GUI.backgroundColor = Color.white;
+            GUI.backgroundColor = SalonDirector.BtnBase;
             if (GUILayout.Button("Kodu yeniden gönder", GUILayout.Height(34)))
             {
                 busy = true;
@@ -646,7 +772,7 @@ public partial class SalonDirector : MonoBehaviour
                     EnterGame();
                 });
             }
-            GUI.backgroundColor = Color.white;
+            GUI.backgroundColor = SalonDirector.BtnBase;
             GUI.enabled = true;
         }
         GUILayout.Space(6);
@@ -666,7 +792,7 @@ public partial class SalonDirector : MonoBehaviour
         if (!hudHidden)
         {
             float bw = Mathf.Min(300, W * 0.58f);
-            GUI.Box(new Rect(8, 8, bw, 92), GUIContent.none, box);
+            PanelBox(new Rect(8, 8, bw, 92));
             GUI.Label(new Rect(20, 12, bw - 20, 26), $"<b>{Cut(m.userName, 22)}</b>  <size=12>{(m.mode == Market.Mode.Demo ? "<color=#FFB74D>DEMO</color>" : "<color=#5BE38A>CANLI</color>")}</size>", h2);
             GUI.Label(new Rect(20, 40, bw - 20, 22), $"Nakit <b>{Fmt.Mls(m.cash)}</b>", label);
             GUI.Label(new Rect(20, 62, bw - 20, 22), $"Net <b><color=#FFD54A>{Fmt.Mls(m.net)}</color></b> · <size=12>{Place()}</size>", label);
@@ -683,7 +809,7 @@ public partial class SalonDirector : MonoBehaviour
             {
                 float pw = Mathf.Min(460, W - 16);
                 var r = HtmlInput.Touch ? new Rect((W - pw) / 2, H * 0.56f, pw, 48) : new Rect((W - pw) / 2, H - 112, pw, 48);
-                GUI.Box(r, GUIContent.none, box);
+                PanelBox(r);
                 string key = HtmlInput.Touch ? near.buttonLabel : "E";
                 if (GUI.Button(new Rect(r.x + 4, r.y + 4, r.width - 8, r.height - 8), $"<b>{key}</b> · <color=#FFD54A>{near.prompt}</color>", new GUIStyle(label) { alignment = TextAnchor.MiddleCenter }))
                     Use(near);

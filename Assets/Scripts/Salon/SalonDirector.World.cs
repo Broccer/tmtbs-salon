@@ -718,7 +718,7 @@ public partial class SalonDirector
         var m = Market.I;
         float w = Mathf.Min(560, W - 16), h = Mathf.Min(300, H - 16);
         var r = new Rect((W - w) / 2, H - h - (HtmlInput.Touch ? 8 : 40), w, h);
-        GUI.Box(r, GUIContent.none, box);
+        PanelBox(r);
         GUILayout.BeginArea(new Rect(r.x + 18, r.y + 12, w - 36, h - 22));
         bool father = dialogWho == 0;
         GUILayout.Label(father ? "<b>Baban</b>" : "<b>Annen</b>", h2);
@@ -753,7 +753,7 @@ public partial class SalonDirector
             GUI.enabled = !worldBusy;
             GUI.backgroundColor = new Color(0.35f, 0.85f, 0.5f);
             if (GUILayout.Button("Sağ ol baba! (10.000 MLS)", btn, GUILayout.Height(44))) TakeAllowance();
-            GUI.backgroundColor = Color.white;
+            GUI.backgroundColor = SalonDirector.BtnBase;
             GUI.enabled = true;
         }
         if (GUILayout.Button(give ? "Sonra" : "Tamam", GUILayout.Height(44), GUILayout.Width(110))) ClosePanel();

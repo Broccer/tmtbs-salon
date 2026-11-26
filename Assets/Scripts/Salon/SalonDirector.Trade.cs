@@ -7,7 +7,6 @@ public partial class SalonDirector
     Stock trade;
     int tradeTab;
     string qtyText = "1", priceText = "";
-    bool limitMode;
     string tradeMsg;
     bool tradeOk, tradeBusy;
     long duel;                                   // 0 = ana hesap
@@ -24,12 +23,11 @@ public partial class SalonDirector
         trade = s;
         tradeTab = 0;
         qtyText = "1";
-        limitMode = false;
-        priceText = PxText(s.price);
+        priceText = "";
         tradeMsg = null;
         chart = null;
         duel = 0;
-        Market.I.LoadDetail(s, () => { if (trade == s && string.IsNullOrEmpty(priceText)) priceText = PxText(s.price); });
+        Market.I.LoadDetail(s, () => { if (trade == s) priceText = PxText(DefaultPx(s)); });
         activeDuels.Clear();
         if (Market.I.Tm && Market.I.Live) LoadDuelAccounts();
     }
@@ -82,7 +80,7 @@ public partial class SalonDirector
         GUILayout.Space(4);
         GUILayout.BeginHorizontal();
         for (int i = 0; i < TradeTabs.Length; i++)
-            if (GUILayout.Button(TradeTabs[i], i == tradeTab ? tabOn : tab, GUILayout.Height(34)))
+            if (TabBtn(TradeTabs[i], i == tradeTab, 34))
             {
                 tradeTab = i;
                 if (i == 2 && chart == null) LoadChart();
@@ -101,19 +99,49 @@ public partial class SalonDirector
         EndPanel();
     }
 
+    /// <summary>Fiyatı kademeye oturtur ve bugünkü bandın içine çeker (Trade of MTBS kuralları).</summary>
+    static double ClampPx(Stock s, double p)
+    {
+        p = Tick.Snap(p);
+        if (s.minPrice > 0 && p < s.minPrice) p = s.minPrice;
+        if (s.maxPrice > 0 && p > s.maxPrice) p = s.maxPrice;
+        return p;
+    }
+
+    /// <summary>Emri hemen eşleşecek en uygun başlangıç fiyatı: en iyi satış, yoksa son fiyat.</summary>
+    static double DefaultPx(Stock s) => ClampPx(s, s.bestAsk > 0 ? s.bestAsk : s.price);
+
     void DrawOrderForm(Stock s, long sellable, float iw)
     {
         var m = Market.I;
         long qty = ParseQty();
-        double buyPx = s.bestAsk > 0 ? s.bestAsk : s.price;
-        double sellPx = s.bestBid > 0 ? s.bestBid : s.price;
+        if (ParsePrice(priceText) <= 0 && s.detailLoaded) priceText = PxText(DefaultPx(s));
+        double px = ClampPx(s, ParsePrice(priceText));
 
+        // ---- Fiyat: kademe kademe ya da elle yazılır; bandın dışına çıkamaz
+        GUILayout.Label($"<b>Fiyat</b>  <size=12>(kademe {Fmt.N2(Tick.Step(px))} MLS" +
+            (s.minPrice > 0 && s.maxPrice > 0 ? $" · bugün izin verilen {Fmt.N2(s.minPrice)} – {Fmt.N2(s.maxPrice)}" : "") + ")</size>", label);
         GUILayout.BeginHorizontal();
-        if (GUILayout.Toggle(!limitMode, " Piyasa emri", GUILayout.Height(30))) limitMode = false;
-        if (GUILayout.Toggle(limitMode, " Limit emir", GUILayout.Height(30)) && !limitMode) { limitMode = true; priceText = PxText(Tick.Snap(s.price)); }
+        if (GUILayout.Button("<<", GUILayout.Width(46), GUILayout.Height(40))) { double p = px; for (int i = 0; i < 5; i++) p = Tick.Down(p); priceText = PxText(ClampPx(s, p)); }
+        if (GUILayout.Button("<", GUILayout.Width(40), GUILayout.Height(40))) priceText = PxText(ClampPx(s, Tick.Down(px)));
+        priceText = HtmlInput.Field("fiyat", priceText, "Fiyat (MLS)", field, false, true, 12, GUILayout.Height(40), GUILayout.MinWidth(80));
+        if (GUILayout.Button(">", GUILayout.Width(40), GUILayout.Height(40))) priceText = PxText(ClampPx(s, Tick.Up(px)));
+        if (GUILayout.Button(">>", GUILayout.Width(46), GUILayout.Height(40))) { double p = px; for (int i = 0; i < 5; i++) p = Tick.Up(p); priceText = PxText(ClampPx(s, p)); }
         GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal();
+        if (s.bestAsk > 0 && GUILayout.Button($"<size=12>En iyi satış</size>\n<b>{Fmt.N2(s.bestAsk)}</b>", GUILayout.Height(40))) priceText = PxText(ClampPx(s, s.bestAsk));
+        if (GUILayout.Button($"<size=12>Son fiyat</size>\n<b>{Fmt.N2(s.price)}</b>", GUILayout.Height(40))) priceText = PxText(ClampPx(s, s.price));
+        if (s.bestBid > 0 && GUILayout.Button($"<size=12>En iyi alış</size>\n<b>{Fmt.N2(s.bestBid)}</b>", GUILayout.Height(40))) priceText = PxText(ClampPx(s, s.bestBid));
+        GUILayout.EndHorizontal();
+        double typed = ParsePrice(priceText);
+        px = ClampPx(s, typed);
+        bool pxFixed = typed > 0 && System.Math.Abs(typed - px) > 0.001;
+        if (pxFixed)
+            GUILayout.Label($"<color=#FFB74A>Yazdığın fiyat geçerli kademeye / bugünkü banda göre <b>{Fmt.N2(px)}</b> olarak verilecek.</color>", small);
 
-        GUILayout.Label("Adet", small);
+        // ---- Adet
+        GUILayout.Space(4);
+        GUILayout.Label("<b>Adet</b>", label);
         GUILayout.BeginHorizontal();
         if (GUILayout.Button("-10", GUILayout.Width(48), GUILayout.Height(38))) qtyText = System.Math.Max(1, qty - 10).ToString();
         if (GUILayout.Button("-1", GUILayout.Width(42), GUILayout.Height(38))) qtyText = System.Math.Max(1, qty - 1).ToString();
@@ -121,48 +149,28 @@ public partial class SalonDirector
         if (GUILayout.Button("+1", GUILayout.Width(42), GUILayout.Height(38))) qtyText = (qty + 1).ToString();
         if (GUILayout.Button("+10", GUILayout.Width(48), GUILayout.Height(38))) qtyText = (qty + 10).ToString();
         GUILayout.EndHorizontal();
-
-        double limitPx = Tick.Snap(ParsePrice(priceText));
-        if (limitMode)
-        {
-            GUILayout.Label($"Fiyat (kademe {Fmt.N2(Tick.Step(limitPx > 0 ? limitPx : s.price))})" +
-                (s.minPrice > 0 && s.maxPrice > 0 ? $" · bugünkü bant {Fmt.N2(s.minPrice)} – {Fmt.N2(s.maxPrice)}" : ""), small);
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("<", GUILayout.Width(48), GUILayout.Height(38))) priceText = PxText(Tick.Down(limitPx > 0 ? limitPx : s.price));
-            priceText = HtmlInput.Field("fiyat", priceText, "Limit fiyat (MLS)", field, false, true, 12, GUILayout.Height(38), GUILayout.MinWidth(90));
-            if (GUILayout.Button(">", GUILayout.Width(48), GUILayout.Height(38))) priceText = PxText(Tick.Up(limitPx > 0 ? limitPx : s.price));
-            GUILayout.EndHorizontal();
-            GUILayout.BeginHorizontal();
-            if (s.bestBid > 0 && GUILayout.Button("En iyi alış " + Fmt.N2(s.bestBid), GUILayout.Height(30))) priceText = PxText(s.bestBid);
-            if (s.bestAsk > 0 && GUILayout.Button("En iyi satış " + Fmt.N2(s.bestAsk), GUILayout.Height(30))) priceText = PxText(s.bestAsk);
-            GUILayout.EndHorizontal();
-            limitPx = Tick.Snap(ParsePrice(priceText));
-            buyPx = sellPx = limitPx;
-        }
-
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Alınabilecek en çok", GUILayout.Height(32)) && buyPx > 0)
-            qtyText = System.Math.Max(1, (long)(m.cash / buyPx)).ToString();
+        if (GUILayout.Button("Alınabilecek en çok", GUILayout.Height(32)) && px > 0)
+            qtyText = System.Math.Max(1, (long)(m.cash / px)).ToString();
         if (GUILayout.Button("Elimdekinin tamamı", GUILayout.Height(32)) && sellable > 0)
             qtyText = sellable.ToString();
         GUILayout.EndHorizontal();
         qty = ParseQty();
-        GUILayout.Label($"Alış ≈ <b>{Fmt.Mls(qty * buyPx)}</b>   ·   Satış ≈ <b>{Fmt.Mls(qty * sellPx)}</b>", small);
+        GUILayout.Label($"Tutar ≈ <b>{Fmt.Mls(qty * px)}</b>   ·   Nakit {Fmt.Mls(m.cash)}", small);
 
-
-        GUI.enabled = !tradeBusy && s.detailLoaded && (!limitMode || limitPx > 0);
+        GUI.enabled = !tradeBusy && s.detailLoaded && px > 0;
         GUILayout.BeginHorizontal();
         GUI.backgroundColor = new Color(0.3f, 0.85f, 0.45f);
-        if (GUILayout.Button($"AL · {Fmt.N2(buyPx)}", btn, GUILayout.Height(52))) SendOrder(true, qty, limitMode ? limitPx : 0);
+        if (GUILayout.Button($"AL · {Fmt.N2(px)}", btn, GUILayout.Height(52))) SendOrder(true, qty, px);
         GUI.backgroundColor = new Color(1f, 0.4f, 0.4f);
-        if (GUILayout.Button($"SAT · {Fmt.N2(sellPx)}", btn, GUILayout.Height(52))) SendOrder(false, qty, limitMode ? limitPx : 0);
-        GUI.backgroundColor = Color.white;
+        if (GUILayout.Button($"SAT · {Fmt.N2(px)}", btn, GUILayout.Height(52))) SendOrder(false, qty, px);
+        GUI.backgroundColor = SalonDirector.BtnBase;
         GUILayout.EndHorizontal();
         GUI.enabled = true;
 
         if (tradeBusy) GUILayout.Label("Emir gönderiliyor…", small);
         else if (!string.IsNullOrEmpty(tradeMsg)) Msg(tradeMsg, tradeOk);
-        else GUILayout.Label(limitMode ? "Limit emir: fiyatın gelene kadar defterde bekler." : "Piyasa emri karşı tarafın en iyi fiyatından verilir.", small);
+        else GUILayout.Label("Alışta fiyatın en iyi satışa eşit ya da üstündeyse, satışta en iyi alışa eşit ya da altındaysa emir hemen eşleşir; değilse fiyatın gelene kadar defterde bekler.", small);
 
         // Bu hissedeki bekleyen emirlerim
         var mine = J.A(J.O(s.detail, "benim"), "emirler");
@@ -236,7 +244,6 @@ public partial class SalonDirector
             var kv = rows[i];
             if (GUILayout.Button($"{Fmt.N2(kv.Key)} × {Fmt.N(kv.Value)}", label))
             {
-                limitMode = true;
                 priceText = PxText(kv.Key);
                 tradeTab = 0;
             }
@@ -269,7 +276,7 @@ public partial class SalonDirector
     {
         GUILayout.BeginHorizontal();
         foreach (var (k, n) in new[] { ("1g", "1 gün"), ("7g", "7 gün"), ("1a", "1 ay"), ("1y", "1 yıl") })
-            if (GUILayout.Button(n, k == chartRange ? tabOn : tab, GUILayout.Height(32))) { chartRange = k; chart = null; LoadChart(); }
+            if (TabBtn(n, k == chartRange, 32)) { chartRange = k; chart = null; LoadChart(); }
         GUILayout.EndHorizontal();
         if (chart == null || chartBusy) { GUILayout.Label("yükleniyor…", small); return; }
         if (chart.ContainsKey("_hata")) { Msg(J.S(chart, "_hata"), false); return; }

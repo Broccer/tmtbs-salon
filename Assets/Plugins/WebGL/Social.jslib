@@ -4,7 +4,7 @@
 mergeInto(LibraryManager.library, {
   SocialStart: function (provPtr) {
     var prov = UTF8ToString(provPtr);
-    var url = "https://mutesebbis.tr/tmtbs-giris.html?p=" + encodeURIComponent(prov);
+    var url = "https://mutesebbis.tr/tmtbs-giris.html?p=" + encodeURIComponent(prov) + (location.origin === "https://mutesebbis.tr" ? "&g=mt" : "");
     function send(m) {
       try {
         if (window.unityInstance) window.unityInstance.SendMessage("SocialLogin", "OnSocial", m);

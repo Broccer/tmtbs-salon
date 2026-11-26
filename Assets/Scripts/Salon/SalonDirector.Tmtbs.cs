@@ -11,7 +11,7 @@ public partial class SalonDirector
         if (!NeedLive()) return;
         GUILayout.BeginHorizontal();
         foreach (var (k, n) in new[] { ("gun", "Gün"), ("hafta", "Hafta"), ("ay", "Ay"), ("yil", "Yıl") })
-            if (GUILayout.Button(n, k == rankPeriod ? tabOn : tab, GUILayout.Height(32)))
+            if (TabBtn(n, k == rankPeriod, 32))
             {
                 rankPeriod = k;
                 pdata.Remove("sira");
@@ -186,7 +186,7 @@ public partial class SalonDirector
             bankMsg = null;
             m.CreditDraw((msg, ok) => { bankBusy = false; bankMsg = msg; bankOk = ok; if (ok && Bell.I) Bell.I.Ring(); });
         }
-        GUI.backgroundColor = Color.white;
+        GUI.backgroundColor = SalonDirector.BtnBase;
 
         double kalan = J.D(k, "kalan");
         if (kalan > 0)
@@ -316,7 +316,7 @@ public partial class SalonDirector
             {
                 int no = j + 1;
                 string n = Tiers[j].ad + (counts.TryGetValue(no, out var c) ? $" ({c})" : "") + (no == mine ? " *" : "");
-                if (GUILayout.Button(n, no == sel ? tabOn : tab, GUILayout.Height(30)))
+                if (TabBtn(n, no == sel, 30))
                 {
                     rankTier = no == mine ? 0 : no;
                     pdata.Remove("sira");
@@ -436,7 +436,7 @@ public partial class SalonDirector
             Market.I.Logout();
             return;
         }
-        GUI.backgroundColor = Color.white;
+        GUI.backgroundColor = SalonDirector.BtnBase;
         if (GUILayout.Button("mutesebbis.tr'de üye ol", btn, GUILayout.Height(40))) Application.OpenURL("https://mutesebbis.tr/register");
         if (GUILayout.Button("Salona dön", GUILayout.Height(38)))
         {
@@ -474,7 +474,7 @@ public partial class SalonDirector
 
     void SocialButtons()
     {
-        GUI.backgroundColor = Color.white;
+        GUI.backgroundColor = SalonDirector.BtnBase;
         if (GUILayout.Button("<b>G</b>  Google ile devam et", btn, GUILayout.Height(40)))
         {
             formMsg = "Google penceresi açılıyor…";
@@ -488,6 +488,6 @@ public partial class SalonDirector
             formErr = false;
             SocialLogin.Begin("apple");
         }
-        GUI.backgroundColor = Color.white;
+        GUI.backgroundColor = SalonDirector.BtnBase;
     }
 }

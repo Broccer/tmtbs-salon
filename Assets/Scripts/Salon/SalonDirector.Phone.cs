@@ -70,7 +70,7 @@ public partial class SalonDirector
         {
             GUILayout.BeginHorizontal();
             for (int j = i; j < i + perRow && j < PhoneTabs.Length; j++)
-                if (GUILayout.Button(PhoneTabs[j], j == phoneTab ? tabOn : tab, GUILayout.Height(34)))
+                if (TabBtn(PhoneTabs[j], j == phoneTab, 34))
                 {
                     phoneTab = j;
                     phoneMsg = null;
@@ -235,7 +235,7 @@ public partial class SalonDirector
             GUI.backgroundColor = new Color(0.3f, 0.85f, 0.45f);
             if (GUILayout.Button("Katıl", btn, GUILayout.Height(36)))
                 m.AnswerRight(id, true, hak, (msg, ok) => { phoneMsg = msg; phoneOk = ok; });
-            GUI.backgroundColor = Color.white;
+            GUI.backgroundColor = SalonDirector.BtnBase;
             if (GUILayout.Button("Vazgeç", GUILayout.Height(36)))
                 m.AnswerRight(id, false, 0, (msg, ok) => { phoneMsg = msg; phoneOk = ok; });
             GUILayout.EndHorizontal();

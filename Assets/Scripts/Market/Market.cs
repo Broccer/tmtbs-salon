@@ -573,9 +573,10 @@ public static class Tick
     public static double Snap(double p)
     {
         if (p <= 0) return 0;
+        if (p < 1) p = 1;
         double s = Step(p);
         double v = Math.Round(Math.Round(p / s) * s, 1);
-        return Math.Max(0.1, v);
+        return Math.Max(1, v);
     }
 
     public static double Up(double p) => Snap(Snap(p) + Step(Snap(p)));
@@ -584,6 +585,6 @@ public static class Tick
     {
         double q = Snap(p);
         double s = Step(q - 1e-9);
-        return Math.Max(0.1, Snap(q - s));
+        return Math.Max(1, Snap(q - s));
     }
 }
