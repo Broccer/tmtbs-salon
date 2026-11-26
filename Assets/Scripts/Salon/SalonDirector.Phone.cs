@@ -70,7 +70,7 @@ public partial class SalonDirector
         {
             GUILayout.BeginHorizontal();
             for (int j = i; j < i + perRow && j < PhoneTabs.Length; j++)
-                if (TabBtn(PhoneTabs[j], j == phoneTab, 34))
+                if (TabBtn(PhoneTabs[j], j == phoneTab, 34, (iw - 6 * perRow) / perRow))
                 {
                     phoneTab = j;
                     phoneMsg = null;

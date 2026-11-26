@@ -401,7 +401,7 @@ public partial class SalonDirector : MonoBehaviour
         float w = 210;
         Color ob = GUI.backgroundColor;
         GUI.backgroundColor = Color.white;
-        GUI.Label(new Rect(8, H - 30, w, 22), t, demoStyle);
+        GUI.Label(new Rect(8, H - 56, w, 22), t, demoStyle);
         GUI.backgroundColor = ob;
     }
 
@@ -415,11 +415,11 @@ public partial class SalonDirector : MonoBehaviour
     }
 
     /// <summary>Sekme tuşu: seçili olan altın vurgulu (tema rengiyle boyanmaz).</summary>
-    bool TabBtn(string text, bool on, float h)
+    bool TabBtn(string text, bool on, float h, float w = 0)
     {
         Color old = GUI.backgroundColor;
         GUI.backgroundColor = Color.white;
-        bool r = GUILayout.Button(text, on ? tabOn : tab, GUILayout.Height(h));
+        bool r = w > 0 ? GUILayout.Button(text, on ? tabOn : tab, GUILayout.Height(h), GUILayout.Width(w)) : GUILayout.Button(text, on ? tabOn : tab, GUILayout.Height(h));
         GUI.backgroundColor = old;
         return r;
     }
