@@ -193,7 +193,7 @@ public static class SeljukBuilding
         var logo = Resources.Load<Texture2D>("tmtbs_logo");
         if (logo != null)
             Gfx.Prim(PrimitiveType.Quad, "Logo", t, new Vector3(-5.1f, 13.55f, front - 0.16f), new Vector3(2.0f, 2.0f, 1f), Gfx.Texture(logo), false);
-        Gfx.Text("Tabela_Yazi", t, new Vector3(0.9f, 13.95f, front - 0.17f), Quaternion.identity, "BORSA MTBS", 1.05f, Gold, TextAnchor.MiddleCenter, TextAlignment.Center);
+        Gfx.Text("Tabela_Yazi", t, new Vector3(0.9f, 13.95f, front - 0.17f), Quaternion.identity, Loc.T("BORSA MTBS"), 1.05f, Gold, TextAnchor.MiddleCenter, TextAlignment.Center);
         b.facadeIndex = Gfx.Text("Tabela_Endeks", t, new Vector3(0.9f, 12.75f, front - 0.17f), Quaternion.identity, "", 0.5f, Color.white, TextAnchor.MiddleCenter, TextAlignment.Center);
 
         // ---- Yan kanatlarda: en çok yükselen / düşen 5 marka
@@ -208,12 +208,12 @@ public static class SeljukBuilding
             Gfx.Box("Cephe_Pano_Cerceve", t, new Vector3(cx, 2.46f, pzf - 0.02f), new Vector3(8.9f, 0.08f, 0.14f), edge);
             float zt = pzf - 0.1f;
             Gfx.Text("Pano_Baslik", t, new Vector3(cx, 8.85f, zt), Quaternion.identity,
-                up ? "EN ÇOK YÜKSELEN 5" : "EN ÇOK DÜŞEN 5", 0.6f, up ? new Color(0.23f, 0.82f, 0.43f) : new Color(1f, 0.4f, 0.4f));
+                up ? Loc.T("EN ÇOK YÜKSELEN 5") : Loc.T("EN ÇOK DÜŞEN 5"), 0.6f, up ? new Color(0.23f, 0.82f, 0.43f) : new Color(1f, 0.4f, 0.4f));
             float top = 8.0f;
             b.fNames[p] = Gfx.Text("Pano_Ad", t, new Vector3(cx - 4.1f, top, zt), Quaternion.identity, "", 0.42f, Color.white, TextAnchor.UpperLeft, TextAlignment.Left);
             b.fPrices[p] = Gfx.Text("Pano_Fiyat", t, new Vector3(cx + 1.3f, top, zt), Quaternion.identity, "", 0.42f, new Color(1f, 0.92f, 0.6f), TextAnchor.UpperRight, TextAlignment.Right);
             b.fChanges[p] = Gfx.Text("Pano_Degisim", t, new Vector3(cx + 4.1f, top, zt), Quaternion.identity, "", 0.42f, Color.white, TextAnchor.UpperRight, TextAlignment.Right);
-            Gfx.Text("Pano_Alt", t, new Vector3(cx, 3.0f, zt), Quaternion.identity, "canlı borsa · Trade of MTBS", 0.26f, new Color(0.6f, 0.65f, 0.75f));
+            Gfx.Text("Pano_Alt", t, new Vector3(cx, 3.0f, zt), Quaternion.identity, Loc.T("canlı borsa · Trade of MTBS"), 0.26f, new Color(0.6f, 0.65f, 0.75f));
         }
     }
 

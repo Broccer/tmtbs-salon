@@ -121,14 +121,14 @@ public static class City
         Gfx.Text("Tabela_H", t, new Vector3(-2.8f, 3.1f, -0.64f), Quaternion.identity, "<b>H</b>", 0.6f, new Color(0.1f, 0.25f, 0.1f));
         Gfx.Text("Tabela_H2", t, new Vector3(-2.8f, 3.1f, -0.56f), Quaternion.Euler(0, 180f, 0), "<b>H</b>", 0.6f, new Color(0.1f, 0.25f, 0.1f));
         Gfx.Box("Isim_Pano", t, new Vector3(0, 3.1f, 0.4f), new Vector3(4.4f, 0.5f, 0.05f), Gfx.Lit(Panel, 0.8f));
-        Gfx.Text("Isim", t, new Vector3(0, 3.1f, 0.36f), Quaternion.identity, "DURAK · " + st.name, 0.18f, Gold);
-        Gfx.Text("Isim2", t, new Vector3(0, 3.1f, 0.44f), Quaternion.Euler(0, 180f, 0), "DURAK · " + st.name, 0.18f, Gold);
+        Gfx.Text("Isim", t, new Vector3(0, 3.1f, 0.36f), Quaternion.identity, Loc.T("DURAK · ") + st.name, 0.18f, Gold);
+        Gfx.Text("Isim2", t, new Vector3(0, 3.1f, 0.44f), Quaternion.Euler(0, 180f, 0), Loc.T("DURAK · ") + st.name, 0.18f, Gold);
 
         var stopGo = new GameObject("Durak_Nokta");
         stopGo.transform.SetParent(t, false);
         stopGo.transform.localPosition = new Vector3(0, 0, 0.3f);
         stopGo.transform.localRotation = Quaternion.LookRotation(Vector3.back);
-        Interactable.Make(stopGo, Interactable.Kind.BusStop, new Vector3(0, 0, 0.5f), "Otobüse bin · " + st.name, "BİN", 2.6f).arg = i;
+        Interactable.Make(stopGo, Interactable.Kind.BusStop, new Vector3(0, 0, 0.5f), Loc.T("Otobüse bin · ") + st.name, Loc.T("BİN"), 2.6f).arg = i;
 
         // Büfe (durağın doğusunda): küçük kulübe, tezgâh, görevli
         var b = new GameObject("Bufe").transform;
@@ -142,13 +142,13 @@ public static class City
         Gfx.Box("Bufe_Alt", b, new Vector3(0, 0.45f, -0.2f), new Vector3(2.6f, 0.9f, 0.12f), white, true);
         Gfx.Box("Bufe_Tezgah", b, new Vector3(0, 1.0f, -0.3f), new Vector3(2.6f, 0.1f, 0.6f), red);
         Gfx.Box("Bufe_Cati", b, new Vector3(0, 2.75f, 0.2f), new Vector3(3.0f, 0.3f, 2.6f), red);
-        Gfx.Text("Bufe_Yazi", b, new Vector3(0, 2.75f, -1.12f), Quaternion.identity, "BÜFE · bilet · yemek", 0.2f, Color.white);
-        var clerk = Person(b, new Vector3(0, 0, 0.55f), Quaternion.LookRotation(Vector3.back), i % 2 == 0, 3, "Bilet, yemek? Buyur!");
+        Gfx.Text("Bufe_Yazi", b, new Vector3(0, 2.75f, -1.12f), Quaternion.identity, Loc.T("BÜFE · bilet · yemek"), 0.2f, Color.white);
+        var clerk = Person(b, new Vector3(0, 0, 0.55f), Quaternion.LookRotation(Vector3.back), i % 2 == 0, 3, Loc.T("Bilet, yemek? Buyur!"));
         var desk = new GameObject("Bufe_Nokta");
         desk.transform.SetParent(b, false);
         desk.transform.localPosition = new Vector3(0, 0, -0.3f);
         desk.transform.localRotation = Quaternion.LookRotation(Vector3.back);
-        Interactable.Make(desk, Interactable.Kind.Buffet, new Vector3(0, 0, 0.9f), "Büfe: aylık otobüs bileti ve yemek", "BÜFE", 2.2f).arg = i;
+        Interactable.Make(desk, Interactable.Kind.Buffet, new Vector3(0, 0, 0.9f), Loc.T("Büfe: aylık otobüs bileti ve yemek"), Loc.T("BÜFE"), 2.2f).arg = i;
         clerk.name = "Bufeci";
     }
 
@@ -239,16 +239,16 @@ public static class City
     static void BuildJobCenter(Transform root, float x)
     {
         var t = Building(root, "Is_Bulma_Merkezi", x, 16f, 16f, 5f, new Color(0.80f, 0.84f, 0.88f), new Color(0.35f, 0.38f, 0.42f),
-            "İŞ BULMA MERKEZİ", "ilanlar · başvuru · kariyer");
-        Desk(t, new Vector3(-3.5f, 0, 3.5f), Interactable.Kind.JobCenter, "İş ilanlarına bak, başvur", "İLAN", true, "Hoş geldin! İş mi arıyorsun?");
-        Desk(t, new Vector3(3.5f, 0, 3.5f), Interactable.Kind.JobCenter, "Kariyer danışmanı: ilanlar, işten ayrılma", "İLAN", false, "Sana uygun ilanlara bakalım.");
+            Loc.T("İŞ BULMA MERKEZİ"), Loc.T("ilanlar · başvuru · kariyer"));
+        Desk(t, new Vector3(-3.5f, 0, 3.5f), Interactable.Kind.JobCenter, Loc.T("İş ilanlarına bak, başvur"), Loc.T("İLAN"), true, Loc.T("Hoş geldin! İş mi arıyorsun?"));
+        Desk(t, new Vector3(3.5f, 0, 3.5f), Interactable.Kind.JobCenter, Loc.T("Kariyer danışmanı: ilanlar, işten ayrılma"), Loc.T("İLAN"), false, Loc.T("Sana uygun ilanlara bakalım."));
         // İlan panosu (arka duvar)
         Gfx.Box("Ilan_Panosu", t, new Vector3(0, 2.6f, 7.8f), new Vector3(8f, 2.2f, 0.08f), Gfx.Lit(new Color(0.55f, 0.4f, 0.25f), 0.2f));
         var rnd = new System.Random(7);
         for (int i = 0; i < 14; i++)
             Gfx.Box("Ilan", t, new Vector3(-3.4f + (i % 7) * 1.13f, 2.1f + (i / 7) * 1.0f, 7.74f), new Vector3(0.8f, 0.7f, 0.02f),
                 Gfx.Lit(new Color(0.9f + (float)rnd.NextDouble() * 0.1f, 0.9f, 0.75f + (float)rnd.NextDouble() * 0.2f), 0.1f));
-        Gfx.Text("Pano_Yazi", t, new Vector3(0, 3.95f, 7.72f), Quaternion.identity, "GÜNCEL İLANLAR", 0.3f, Gold);
+        Gfx.Text("Pano_Yazi", t, new Vector3(0, 3.95f, 7.72f), Quaternion.identity, Loc.T("GÜNCEL İLANLAR"), 0.3f, Gold);
         // Bekleme sandalyeleri
         for (int i = -2; i <= 2; i++)
             Gfx.Box("Bekleme", t, new Vector3(i * 1.2f, 0.25f, -4f), new Vector3(0.6f, 0.5f, 0.6f), Gfx.Lit(new Color(0.2f, 0.4f, 0.6f), 0.3f), true);
@@ -257,8 +257,8 @@ public static class City
     static void BuildEstate(Transform root, float x)
     {
         var t = Building(root, "Emlak_Ofisi", x, 14f, 14f, 4.5f, new Color(0.93f, 0.88f, 0.78f), new Color(0.48f, 0.34f, 0.22f),
-            "EMLAK OFİSİ", "satılık · kiralık konut");
-        Desk(t, new Vector3(0, 0, 3.2f), Interactable.Kind.Estate, "Emlakçı: ev al, sat ya da kiralık konuta taşın", "EMLAK", true, "Hayalindeki ev burada!");
+            Loc.T("EMLAK OFİSİ"), Loc.T("satılık · kiralık konut"));
+        Desk(t, new Vector3(0, 0, 3.2f), Interactable.Kind.Estate, Loc.T("Emlakçı: ev al, sat ya da kiralık konuta taşın"), Loc.T("EMLAK"), true, Loc.T("Hayalindeki ev burada!"));
         // Duvarda ev maketleri / ilan resimleri
         var roofs = new[] { new Color(0.7f, 0.2f, 0.15f), new Color(0.2f, 0.35f, 0.6f), new Color(0.3f, 0.5f, 0.25f) };
         for (int i = 0; i < 3; i++)
@@ -275,8 +275,8 @@ public static class City
     static void BuildCarDealer(Transform root, float x)
     {
         var t = Building(root, "Araba_Galerisi", x, 20f, 18f, 5.5f, new Color(0.25f, 0.27f, 0.32f), new Color(0.75f, 0.76f, 0.78f),
-            "ARABA GALERİSİ", "sıfır · ikinci el · ulaşım");
-        Desk(t, new Vector3(6f, 0, 5.5f), Interactable.Kind.CarDealer, "Satış danışmanı: araba al ya da sat", "GALERİ", false, "Test sürüşü ister misin?");
+            Loc.T("ARABA GALERİSİ"), Loc.T("sıfır · ikinci el · ulaşım"));
+        Desk(t, new Vector3(6f, 0, 5.5f), Interactable.Kind.CarDealer, Loc.T("Satış danışmanı: araba al ya da sat"), Loc.T("GALERİ"), false, Loc.T("Test sürüşü ister misin?"));
         var colors = new[] { new Color(0.75f, 0.1f, 0.1f), new Color(0.1f, 0.25f, 0.6f), new Color(0.9f, 0.9f, 0.92f), new Color(0.1f, 0.1f, 0.12f) };
         for (int i = 0; i < 4; i++)
         {
@@ -291,7 +291,7 @@ public static class City
         p.transform.SetParent(t, false);
         p.transform.localPosition = new Vector3(-2.5f, 0, -1f);
         p.transform.localRotation = Quaternion.LookRotation(Vector3.back);
-        Interactable.Make(p, Interactable.Kind.CarDealer, Vector3.zero, "Arabalara bak (galeri)", "GALERİ", 3f);
+        Interactable.Make(p, Interactable.Kind.CarDealer, Vector3.zero, Loc.T("Arabalara bak (galeri)"), Loc.T("GALERİ"), 3f);
     }
 
     public static void Car(Transform c, Color paint)
@@ -312,8 +312,8 @@ public static class City
     static void BuildAuction(Transform root, float x)
     {
         var t = Building(root, "Muzayede_Salonu", x, 20f, 18f, 6f, new Color(0.45f, 0.12f, 0.14f), new Color(0.22f, 0.12f, 0.08f),
-            "MÜZAYEDE SALONU & GALERİ", "eserler · açık artırma");
-        Desk(t, new Vector3(0, 0, 6.2f), Interactable.Kind.Auction, "Müzayede: eserleri gör, teklif ver", "TEKLİF", true, "Açık artırma sürüyor!");
+            Loc.T("MÜZAYEDE SALONU & GALERİ"), Loc.T("eserler · açık artırma"));
+        Desk(t, new Vector3(0, 0, 6.2f), Interactable.Kind.Auction, Loc.T("Müzayede: eserleri gör, teklif ver"), Loc.T("TEKLİF"), true, Loc.T("Açık artırma sürüyor!"));
         // Kürsü
         Gfx.Box("Kursu", t, new Vector3(-4f, 0.6f, 5.6f), new Vector3(1f, 1.2f, 0.7f), Gfx.Lit(new Color(0.35f, 0.22f, 0.12f), 0.5f), true);
         // Duvarlarda eser çerçeveleri (adı ve güncel fiyatı sunucudan gelir)
@@ -329,7 +329,7 @@ public static class City
             Gfx.Box("Cerceve", t, new Vector3(wx, 2.5f, z), new Vector3(0.08f, 2.0f, 2.8f), gold);
             Gfx.Box("Tuval", t, new Vector3(wx - side * 0.05f, 2.5f, z), new Vector3(0.02f, 1.7f, 2.5f), Gfx.Lit(canvases[i], 0.05f));
             Gfx.Box("Tuval_Desen", t, new Vector3(wx - side * 0.06f, 2.4f + (i % 2) * 0.3f, z + 0.3f), new Vector3(0.01f, 0.7f, 0.9f), Gfx.Lit(canvases[(i + 2) % 6] * 1.2f, 0.05f));
-            var lbl = Gfx.Text("Eser_Etiket", t, new Vector3(wx - side * 0.07f, 1.15f, z), face, "Eser", 0.13f, Color.white);
+            var lbl = Gfx.Text("Eser_Etiket", t, new Vector3(wx - side * 0.07f, 1.15f, z), face, Loc.T("Eser"), 0.13f, Color.white);
             ArtLabels.Add(lbl);
             Light(t, new Vector3(wx - side * 1.5f, 4.6f, z), 4f, 0.6f);
         }
@@ -342,7 +342,7 @@ public static class City
     static void BuildShop(Transform root, int i, float x)
     {
         var tints = new[] { new Color(0.95f, 0.85f, 0.6f), new Color(0.7f, 0.85f, 0.95f), new Color(0.85f, 0.95f, 0.75f), new Color(0.95f, 0.75f, 0.8f), new Color(0.85f, 0.8f, 0.95f) };
-        var t = Building(root, "Dukkan_" + i, x, 9f, 12f, 4.2f, tints[i % tints.Length], new Color(0.6f, 0.55f, 0.5f), "MAĞAZA", "markamızın ürünleri");
+        var t = Building(root, "Dukkan_" + i, x, 9f, 12f, 4.2f, tints[i % tints.Length], new Color(0.6f, 0.55f, 0.5f), Loc.T("MAĞAZA"), Loc.T("markamızın ürünleri"));
         ShopSigns[i] = t.Find("Tabela_Yazi").GetComponent<TextMesh>();
         ShopSigns[i].characterSize *= 0.6f;
         // Raflar
@@ -353,7 +353,7 @@ public static class City
             for (int k = 0; k < 8; k++)
                 Gfx.Box("Urun", t, new Vector3(s * 3.75f, 0.6f + (k % 4) * 0.55f, -1.5f + (k / 4) * 3.5f), new Vector3(0.3f, 0.35f, 0.9f), Gfx.Lit(Color.HSVToRGB((i * 0.17f + k * 0.11f) % 1f, 0.6f, 0.85f), 0.3f));
         }
-        Desk(t, new Vector3(0, 0, 3.8f), Interactable.Kind.Shop, "Dükkân: ürünlere bak, satın al", "AL", i % 2 == 1, "Hoş geldiniz!", i);
+        Desk(t, new Vector3(0, 0, 3.8f), Interactable.Kind.Shop, Loc.T("Dükkân: ürünlere bak, satın al"), Loc.T("AL"), i % 2 == 1, Loc.T("Hoş geldiniz!"), i);
     }
 }
 
@@ -391,7 +391,7 @@ public class Bus : MonoBehaviour
             Gfx.Box("Camlar", t, new Vector3(s * 1.26f, 2.2f, 0), new Vector3(0.02f, 1.1f, 10f), Gfx.Glow(new Color(0.6f, 0.8f, 0.9f) * 0.4f));
         Gfx.Box("On_Cam", t, new Vector3(0, 2.1f, 5.51f), new Vector3(2.2f, 1.5f, 0.02f), Gfx.Glow(new Color(0.6f, 0.8f, 0.9f) * 0.4f));
         Gfx.Box("Hat_Pano", t, new Vector3(0, 2.95f, 5.52f), new Vector3(1.8f, 0.35f, 0.02f), dark);
-        Gfx.Text("Hat_Yazi", t, new Vector3(0, 2.95f, 5.54f), Quaternion.Euler(0, 180f, 0), "1 · ŞEHİR HATTI", 0.16f, new Color(1f, 0.6f, 0.1f));
+        Gfx.Text("Hat_Yazi", t, new Vector3(0, 2.95f, 5.54f), Quaternion.Euler(0, 180f, 0), Loc.T("1 · ŞEHİR HATTI"), 0.16f, new Color(1f, 0.6f, 0.1f));
         foreach (int sx in new[] { -1, 1 })
             foreach (float sz in new[] { -3.6f, 3.6f })
                 Gfx.Prim(PrimitiveType.Cylinder, "Teker", t, new Vector3(sx * 1.15f, 0.5f, sz), new Vector3(1f, 0.18f, 1f), dark, false)

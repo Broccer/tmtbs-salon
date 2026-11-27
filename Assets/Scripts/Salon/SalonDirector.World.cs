@@ -32,8 +32,8 @@ public partial class SalonDirector
     {
         fadeUntil = Time.time + 2.5f;
         fatherAutoShown = false;
-        Show("Günaydın! Yatağında uyandın.", 3.5f);
-        Hint("Odandan çık, salona geç: annen ve baban seni bekliyor.", 9f);
+        Show(T("Günaydın! Yatağında uyandın."), 3.5f);
+        Hint(T("Odandan çık, salona geç: annen ve baban seni bekliyor."), 9f);
         LoadWorldData();
     }
 
@@ -75,7 +75,7 @@ public partial class SalonDirector
             {
                 var lbl = City.ArtLabels[i];
                 if (lbl == null) continue;
-                if (i >= list.Count) { lbl.text = "— boş —"; continue; }
+                if (i >= list.Count) { lbl.text = T("— boş —"); continue; }
                 var o = list[i];
                 lbl.text = $"{Cut(J.S(o, "urun_adi"), 22)}\n<size=70>{Cut(J.S(o, "sanatci"), 22)}</size>\n{Fmt.Mls(J.D(o, "guncel_fiyat"))}";
             }
@@ -93,7 +93,7 @@ public partial class SalonDirector
             seenDash = m.dashVersion;
             var ev = J.O(m.dash, "ev");
             if (ev.Count > 0)
-                Town.LevelSign.text = $"EV SEVİYESİ {Fmt.N(J.D(ev, "seviye"))}\n<size=60>{Cut(J.S(ev, "ev_adi"), 24)}</size>";
+                Town.LevelSign.text = T("EV SEVİYESİ {0}\n<size=60>{1}</size>", Fmt.N(J.D(ev, "seviye")), Cut(J.S(ev, "ev_adi"), 24));
         }
         if (m.Tm)
         {
@@ -117,23 +117,23 @@ public partial class SalonDirector
         {
             case Interactable.Kind.Teller:
                 if (Market.I.Tm) OpenCredit();
-                else OpenPlace("Fatura", it.arg == 1 ? "MTBS Bankası · Salon veznesi" : "MTBS Bankası · Vezne", 0);
+                else OpenPlace("Fatura", it.arg == 1 ? T("MTBS Bankası · Salon veznesi") : T("MTBS Bankası · Vezne"), 0);
                 return true;
             case Interactable.Kind.Door: OpenGate(); return true;
-            case Interactable.Kind.Podium: OpenPlace("Kürsü", "Borsa Yönetimi · Duyurular", 0); return true;
+            case Interactable.Kind.Podium: OpenPlace("Kürsü", T("Borsa Yönetimi · Duyurular"), 0); return true;
             case Interactable.Kind.Duel:
-                if (Market.I.Tm) OpenPlace("Düello", "Düello Salonu", 0);
-                else Hint("Düello Trade of MTBS hesabıyla oynanır. Menü → Profil → çıkış yapıp Trade of MTBS ile gir.", 5f);
+                if (Market.I.Tm) OpenPlace("Düello", T("Düello Salonu"), 0);
+                else Hint(T("Düello Trade of MTBS hesabıyla oynanır. Menü → Profil → çıkış yapıp Trade of MTBS ile gir."), 5f);
                 return true;
-            case Interactable.Kind.BusStop: OpenPlace("Otobüs", "Durak · " + City.Stops[it.arg].name, it.arg); return true;
-            case Interactable.Kind.Buffet: OpenPlace("Büfe", "Büfe · " + City.Stops[it.arg].name, it.arg); return true;
-            case Interactable.Kind.JobCenter: OpenPlace("İş", "İş Bulma Merkezi", 0); return true;
-            case Interactable.Kind.Estate: OpenPlace("Emlak", "Emlak Ofisi", 0); return true;
-            case Interactable.Kind.CarDealer: OpenPlace("Galeri", "Araba Galerisi", 0); return true;
-            case Interactable.Kind.Auction: OpenPlace("Müzayede", "Müzayede Salonu & Galeri", 0); return true;
+            case Interactable.Kind.BusStop: OpenPlace("Otobüs", T("Durak · ") + City.Stops[it.arg].name, it.arg); return true;
+            case Interactable.Kind.Buffet: OpenPlace("Büfe", T("Büfe · ") + City.Stops[it.arg].name, it.arg); return true;
+            case Interactable.Kind.JobCenter: OpenPlace("İş", T("İş Bulma Merkezi"), 0); return true;
+            case Interactable.Kind.Estate: OpenPlace("Emlak", T("Emlak Ofisi"), 0); return true;
+            case Interactable.Kind.CarDealer: OpenPlace("Galeri", T("Araba Galerisi"), 0); return true;
+            case Interactable.Kind.Auction: OpenPlace("Müzayede", T("Müzayede Salonu & Galeri"), 0); return true;
             case Interactable.Kind.Shop:
                 shopId = City.ShopIds[it.arg];
-                OpenPlace("Dükkân", string.IsNullOrEmpty(City.ShopNames[it.arg]) ? "Mağaza" : City.ShopNames[it.arg], it.arg);
+                OpenPlace("Dükkân", string.IsNullOrEmpty(City.ShopNames[it.arg]) ? T("Mağaza") : City.ShopNames[it.arg], it.arg);
                 return true;
             case Interactable.Kind.Parent: OpenDialog(it.arg); return true;
         }
@@ -183,10 +183,10 @@ public partial class SalonDirector
     /// <summary>Kürsü: borsa yönetiminin son duyuruları (halka arz, artırım, bölünme, temettü, fabrika).</summary>
     void TabPodium()
     {
-        GUILayout.Label("Borsa yönetimi önemli gelişmeleri gong çalarak duyurur. Yeni halka arzlar, sermaye artırımları, bölünmeler ve temettüler burada.", small);
-        Title("Son duyurular");
+        GUILayout.Label(T("Borsa yönetimi önemli gelişmeleri gong çalarak duyurur. Yeni halka arzlar, sermaye artırımları, bölünmeler ve temettüler burada."), small);
+        Title(T("Son duyurular"));
         var p = Podium.I;
-        if (p == null || p.History.Count == 0) { GUILayout.Label("Henüz duyuru yok; birazdan gelir.", small); return; }
+        if (p == null || p.History.Count == 0) { GUILayout.Label(T("Henüz duyuru yok; birazdan gelir."), small); return; }
         for (int i = 0; i < p.History.Count && i < 30; i++)
         {
             GUILayout.Label((i == 0 ? "<color=#FFD54A>" : "<color=#C9D1E0>") + p.History[i] + "</color>", label);
@@ -257,23 +257,23 @@ public partial class SalonDirector
     {
         if (!NeedLive()) return;
         var d = Market.I.dash;
-        if (d.Count == 0) { GUILayout.Label("yükleniyor…", small); return; }
+        if (d.Count == 0) { GUILayout.Label(T("yükleniyor…"), small); return; }
         var tm = J.O(d, "time");
-        Row("Oyun zamanı", $"{Fmt.N(J.D(tm, "ay"))}. ay · {Fmt.N(J.D(tm, "sezon"))}. sezon");
-        Row("Nakit", Fmt.Mls(Market.I.cash));
+        Row(T("Oyun zamanı"), T("{0}. ay · {1}. sezon", Fmt.N(J.D(tm, "ay")), Fmt.N(J.D(tm, "sezon"))));
+        Row(T("Nakit"), Fmt.Mls(Market.I.cash));
         var job = J.O(d, "is");
         string mes = J.S(job, "aktif_meslek");
-        Row("İş", mes != "" ? $"<b>{mes}</b> · {Fmt.Mls(J.D(job, "maas"))}" : "<color=#FF7A7A>İşsiz</color> → İş Bulma Merkezi");
+        Row(T("İş"), mes != "" ? $"<b>{mes}</b> · {Fmt.Mls(J.D(job, "maas"))}" : T("<color=#FF7A7A>İşsiz</color> → İş Bulma Merkezi"));
         var ev = J.O(d, "ev");
-        Row("Konut", J.S(ev, "ev_adi"));
-        Row("Ev faturası", Ok(J.B(ev, "gider_odendi"), "bu ay ödendi", $"ödenmedi ({Fmt.Mls(J.D(ev, "gider_tutari"))}) → MTBS Bankası"));
+        Row(T("Konut"), J.S(ev, "ev_adi"));
+        Row(T("Ev faturası"), Ok(J.B(ev, "gider_odendi"), T("bu ay ödendi"), T("ödenmedi ({0}) → MTBS Bankası", Fmt.Mls(J.D(ev, "gider_tutari")))));
         var ul = J.O(d, "ulasim");
-        if (J.S(ul, "arac_adi") != "") Row("Ulaşım", J.S(ul, "arac_adi"));
-        Row("Otobüs bileti", Ok(J.B(ul, "bilet_odendi"), "bu ay alındı", $"alınmadı ({Fmt.Mls(J.D(ul, "bilet_ucreti"))}) → durak büfesi"));
+        if (J.S(ul, "arac_adi") != "") Row(T("Ulaşım"), J.S(ul, "arac_adi"));
+        Row(T("Otobüs bileti"), Ok(J.B(ul, "bilet_odendi"), T("bu ay alındı"), T("alınmadı ({0}) → durak büfesi", Fmt.Mls(J.D(ul, "bilet_ucreti")))));
         var y = J.O(d, "yemek");
-        Row("Bu ayın yemeği", Ok(J.B(y, "bu_ay_alindi"), "alındı", "alınmadı → durak büfesi"));
+        Row(T("Bu ayın yemeği"), Ok(J.B(y, "bu_ay_alindi"), T("alındı"), T("alınmadı → durak büfesi")));
         var st = J.O(d, "status");
-        if (st.Count > 0) { Title("Sıradaki iş"); Dump(st); }
+        if (st.Count > 0) { Title(T("Sıradaki iş")); Dump(st); }
     }
 
     // ================================================================ İş Bulma Merkezi
@@ -288,7 +288,7 @@ public partial class SalonDirector
             case "first_job": return "Önce ilk işini bul";
             case "edu": return "Eğitim gerekli: " + J.S(o, "egitim_adi");
             case "cert": return "Sertifika gerekli: " + J.S(o, "sertifika_adi");
-            default: return "Uygun değil";
+            default: return T("Uygun değil");
         }
     }
 
@@ -301,19 +301,19 @@ public partial class SalonDirector
             string mes = J.S(job, "aktif_meslek");
             if (mes != "")
             {
-                Row("Mesleğin", $"<b>{mes}</b>");
-                Row("Maaş", Fmt.Mls(J.D(job, "maas")));
-                if (J.D(job, "bekleyen_maas") > 0) Row("Bekleyen maaş", Fmt.Mls(J.D(job, "bekleyen_maas")));
-                GUILayout.Label("Maaşını Müteşebbis uygulamasından (kısa bir reklam izleyerek) çekersin.", small);
-                if (J.B(job, "ayrilabilir") && ActButton("İşten ayrıl", 34))
-                    Act("/kariyer/ayril", null, "İşten ayrıldın.", "kariyer", "ilanlar");
+                Row(T("Mesleğin"), $"<b>{mes}</b>");
+                Row(T("Maaş"), Fmt.Mls(J.D(job, "maas")));
+                if (J.D(job, "bekleyen_maas") > 0) Row(T("Bekleyen maaş"), Fmt.Mls(J.D(job, "bekleyen_maas")));
+                GUILayout.Label(T("Maaşını Müteşebbis uygulamasından (kısa bir reklam izleyerek) çekersin."), small);
+                if (J.B(job, "ayrilabilir") && ActButton(T("İşten ayrıl"), 34))
+                    Act("/kariyer/ayril", null, T("İşten ayrıldın."), "kariyer", "ilanlar");
             }
-            else GUILayout.Label("Şu an bir işin yok. Aşağıdaki ilanlardan sana uygun olana başvur.", label);
+            else GUILayout.Label(T("Şu an bir işin yok. Aşağıdaki ilanlardan sana uygun olana başvur."), label);
         }
-        Title("İş ilanları");
+        Title(T("İş ilanları"));
         if (!Data("ilanlar", out var il)) return;
         var list = J.A(il, "ilanlar");
-        if (list.Count == 0) { GUILayout.Label("Şu an ilan yok.", small); return; }
+        if (list.Count == 0) { GUILayout.Label(T("Şu an ilan yok."), small); return; }
         for (int i = 0; i < list.Count && i < 60; i++)
         {
             var o = list[i] as Dictionary<string, object>;
@@ -327,8 +327,8 @@ public partial class SalonDirector
             {
                 long id = J.L(o, "id");
                 string title = J.S(o, "baslik");
-                if (ActButton("Başvur", 34, 90))
-                    Act("/kariyer/basvur", new Dictionary<string, object> { { "ilan_id", id } }, $"Tebrikler, işe girdin: {title}!", "kariyer", "ilanlar");
+                if (ActButton(T("Başvur"), 34, 90))
+                    Act("/kariyer/basvur", new Dictionary<string, object> { { "ilan_id", id } }, T("Tebrikler, işe girdin: {0}!", title), "kariyer", "ilanlar");
             }
             else GUILayout.Label($"<color=#FFB74D><size=12>{JobBlock(o)}</size></color>", small, GUILayout.Width(130));
             GUILayout.EndHorizontal();
@@ -342,16 +342,16 @@ public partial class SalonDirector
         if (!NeedLive()) return;
         if (shopId > 0)
         {
-            if (GUILayout.Button("← Mağazalar", GUILayout.Height(32))) { shopId = 0; return; }
+            if (GUILayout.Button(T("← Mağazalar"), GUILayout.Height(32))) { shopId = 0; return; }
             DrawStore(shopId, true);
             return;
         }
-        GUILayout.Label("Markaların mağazaları (çarşıdaki dükkânlar da bunlardan):", small);
+        GUILayout.Label(T("Markaların mağazaları (çarşıdaki dükkânlar da bunlardan):"), small);
         if (!Data("pazar", out var d)) return;
         foreach (var o in J.A(d, "magazalar"))
         {
             long id = J.L(o, "id");
-            if (GUILayout.Button($"<b>{J.S(o, "isim")}</b>  <size=12>{Fmt.N(J.D(o, "urun_sayisi"))} ürün</size>",
+            if (GUILayout.Button(T("<b>{0}</b>  <size=12>{1} ürün</size>", J.S(o, "isim"), Fmt.N(J.D(o, "urun_sayisi"))),
                 new GUIStyle(btn) { alignment = TextAnchor.MiddleLeft, fontStyle = FontStyle.Normal }, GUILayout.Height(36)))
             {
                 shopId = id;
@@ -369,13 +369,13 @@ public partial class SalonDirector
 
     void DrawStore(long id, bool fromPhone)
     {
-        if (id <= 0) { GUILayout.Label("Bu dükkân henüz boş (mağaza bilgisi yükleniyor ya da yok).", label); return; }
+        if (id <= 0) { GUILayout.Label(T("Bu dükkân henüz boş (mağaza bilgisi yükleniyor ya da yok)."), label); return; }
         if (!Data("magaza" + id, out var d)) return;
         var mg = J.O(d, "magaza");
         if (fromPhone) GUILayout.Label($"<b>{J.S(mg, "isim")}</b>", h2);
         var items = J.A(d, "urunler");
-        if (items.Count == 0) { GUILayout.Label("Bu mağazada satışta ürün yok.", label); return; }
-        GUILayout.Label("Ayda alabileceğin ürün sayısı ve kategori sırasını oyun kuralları belirler; sunucu uygun değilse söyler.", small);
+        if (items.Count == 0) { GUILayout.Label(T("Bu mağazada satışta ürün yok."), label); return; }
+        GUILayout.Label(T("Ayda alabileceğin ürün sayısı ve kategori sırasını oyun kuralları belirler; sunucu uygun değilse söyler."), small);
         foreach (var x in items)
         {
             var o = x as Dictionary<string, object>;
@@ -386,12 +386,12 @@ public partial class SalonDirector
             bool disc = px < J.D(o, "fiyat");
             GUILayout.Space(3);
             GUILayout.BeginHorizontal();
-            GUILayout.Label($"<b>{name}</b>\n<size=12>{Pretty(J.S(o, "kategori"))} · stok {Fmt.N(J.D(o, "stok"))}</size>", label);
+            GUILayout.Label(T("<b>{0}</b>\n<size=12>{1} · stok {2}</size>", name, Pretty(J.S(o, "kategori")), Fmt.N(J.D(o, "stok"))), label);
             GUILayout.FlexibleSpace();
             GUILayout.Label(disc ? $"<color=#5BE38A><b>{Fmt.Mls(px)}</b></color>\n<size=11><color=#7d879c>{Fmt.Mls(J.D(o, "fiyat"))}</color></size>" : $"<b>{Fmt.Mls(px)}</b>", label, GUILayout.Width(110));
             GUI.enabled = J.D(o, "stok") > 0;
-            if (ActButton("Satın al", 34, 90))
-                Act("/urun/" + uid + "/satin-al", null, $"Satın aldın: {name}", "magaza" + id);
+            if (ActButton(T("Satın al"), 34, 90))
+                Act("/urun/" + uid + "/satin-al", null, T("Satın aldın: {0}", name), "magaza" + id);
             GUI.enabled = true;
             GUILayout.EndHorizontal();
         }
@@ -402,41 +402,41 @@ public partial class SalonDirector
     void TabEstate()
     {
         if (!NeedLive()) return;
-        Title("Kiralık konut (ev seviyen)");
+        Title(T("Kiralık konut (ev seviyen)"));
         if (Data("ev", out var e))
         {
             var s = J.O(e, "status");
-            Row("Oturduğun yer", $"<b>{J.S(s, "ev_adi")}</b> · seviye {Fmt.N(J.D(s, "seviye"))}/{Fmt.N(J.D(s, "max_seviye"))}");
-            Row("Aylık kira/gider", Fmt.Mls(J.D(s, "gider_tutari")));
-            if (J.B(s, "yukseltme_devam_ediyor")) Row("Taşınma", $"sürüyor · {Fmt.N(J.D(s, "kalan_ay"))} ay kaldı");
+            Row(T("Oturduğun yer"), T("<b>{0}</b> · seviye {1}/{2}", J.S(s, "ev_adi"), Fmt.N(J.D(s, "seviye")), Fmt.N(J.D(s, "max_seviye"))));
+            Row(T("Aylık kira/gider"), Fmt.Mls(J.D(s, "gider_tutari")));
+            if (J.B(s, "yukseltme_devam_ediyor")) Row(T("Taşınma"), T("sürüyor · {0} ay kaldı", Fmt.N(J.D(s, "kalan_ay"))));
             else if (J.S(s, "sonraki_adi") != "")
             {
                 if (J.B(s, "yukseltilebilir"))
                 {
-                    if (ActButton($"\"{J.S(s, "sonraki_adi")}\" konutuna taşın", 38))
-                        Act("/hayat/ev/yukselt", null, "Taşınma başladı.", "ev");
+                    if (ActButton(T("\"{0}\" konutuna taşın", J.S(s, "sonraki_adi")), 38))
+                        Act("/hayat/ev/yukselt", null, T("Taşınma başladı."), "ev");
                 }
-                else GUILayout.Label($"Sıradaki konut: {J.S(s, "sonraki_adi")} (şartları henüz sağlamıyorsun).", small);
+                else GUILayout.Label(T("Sıradaki konut: {0} (şartları henüz sağlamıyorsun).", J.S(s, "sonraki_adi")), small);
             }
         }
-        Title("Satılık evler");
-        Listings("evp", "/hayat/ev-pazari", "Ev");
+        Title(T("Satılık evler"));
+        Listings("evp", "/hayat/ev-pazari", T("Ev"));
     }
 
     void TabCars()
     {
         if (!NeedLive()) return;
-        Title("Ulaşım seviyen");
+        Title(T("Ulaşım seviyen"));
         if (Data("ulasim", out var u))
         {
             var s = J.O(u, "status");
-            Row("Aracın", $"<b>{(J.S(s, "arac_adi") != "" ? J.S(s, "arac_adi") : "Toplu taşıma")}</b> · seviye {Fmt.N(J.D(s, "seviye"))}");
-            if (J.B(s, "yukseltme_devam_ediyor")) Row("Yükseltme", $"sürüyor · {Fmt.N(J.D(s, "kalan_ay"))} ay kaldı");
-            else if (J.S(s, "sonraki_adi") != "" && J.B(s, "yukseltilebilir") && ActButton($"\"{J.S(s, "sonraki_adi")}\" seviyesine geç", 38))
-                Act("/hayat/ulasim/yukselt", null, "Ulaşım yükseltmesi başladı.", "ulasim");
+            Row(T("Aracın"), T("<b>{0}</b> · seviye {1}", (J.S(s, "arac_adi") != "" ? J.S(s, "arac_adi") : T("Toplu taşıma")), Fmt.N(J.D(s, "seviye"))));
+            if (J.B(s, "yukseltme_devam_ediyor")) Row(T("Yükseltme"), T("sürüyor · {0} ay kaldı", Fmt.N(J.D(s, "kalan_ay"))));
+            else if (J.S(s, "sonraki_adi") != "" && J.B(s, "yukseltilebilir") && ActButton(T("\"{0}\" seviyesine geç", J.S(s, "sonraki_adi")), 38))
+                Act("/hayat/ulasim/yukselt", null, T("Ulaşım yükseltmesi başladı."), "ulasim");
         }
-        Title("Satılık arabalar");
-        Listings("arp", "/hayat/arac-pazari", "Araba");
+        Title(T("Satılık arabalar"));
+        Listings("arp", "/hayat/arac-pazari", T("Araba"));
     }
 
     /// <summary>Ev / araba pazarı: ilanlar (al), sahip oldukların (sat / satıştan çek).</summary>
@@ -446,7 +446,7 @@ public partial class SalonDirector
         var owned = J.A(d, "sahip");
         if (owned.Count > 0)
         {
-            GUILayout.Label($"<b>Senin {what.ToLower()}ların</b>", label);
+            GUILayout.Label(T("<b>Senin {0}ların</b>", what.ToLower()), label);
             foreach (var x in owned)
             {
                 var o = x as Dictionary<string, object>;
@@ -456,7 +456,7 @@ public partial class SalonDirector
             GUILayout.Space(6);
         }
         var list = J.A(d, "ilanlar");
-        if (list.Count == 0) { GUILayout.Label("Şu an ilan yok.", small); return; }
+        if (list.Count == 0) { GUILayout.Label(T("Şu an ilan yok."), small); return; }
         foreach (var x in list)
         {
             var o = x as Dictionary<string, object>;
@@ -466,15 +466,15 @@ public partial class SalonDirector
             string name = J.S(o, "isim");
             GUILayout.Space(3);
             GUILayout.BeginHorizontal();
-            string seller = J.S(o, "satici_adsoyad") != "" ? " · satıcı " + J.S(o, "satici_adsoyad") : "";
-            GUILayout.Label($"<b>{name}</b> · {Fmt.Mls(J.D(o, "fiyat"))}\n<size=12>min. seviye {Fmt.N(J.D(o, "min_seviye"))}{seller}</size>", label);
+            string seller = J.S(o, "satici_adsoyad") != "" ? T(" · satıcı ") + J.S(o, "satici_adsoyad") : "";
+            GUILayout.Label(T("<b>{0}</b> · {1}\n<size=12>min. seviye {2}{3}</size>", name, Fmt.Mls(J.D(o, "fiyat")), Fmt.N(J.D(o, "min_seviye")), seller), label);
             GUILayout.FlexibleSpace();
             if (J.B(o, "satin_alinabilir"))
             {
-                if (ActButton("Satın al", 34, 90))
-                    Act(path + "/al", new Dictionary<string, object> { { "id", id } }, $"{name} artık senin!", key);
+                if (ActButton(T("Satın al"), 34, 90))
+                    Act(path + "/al", new Dictionary<string, object> { { "id", id } }, T("{0} artık senin!", name), key);
             }
-            else GUILayout.Label("<color=#FFB74D><size=12>şartlar uymuyor</size></color>", small, GUILayout.Width(110));
+            else GUILayout.Label(T("<color=#FFB74D><size=12>şartlar uymuyor</size></color>"), small, GUILayout.Width(110));
             GUILayout.EndHorizontal();
         }
     }
@@ -484,20 +484,20 @@ public partial class SalonDirector
         long id = J.L(o, "id");
         string name = J.S(o, "isim");
         GUILayout.BeginHorizontal();
-        GUILayout.Label($"<b>{name}</b> · değer {Fmt.Mls(J.D(o, "fiyat"))}{(J.B(o, "satista_mi") ? " · <color=#FFD54A>satışta</color>" : "")}", label);
+        GUILayout.Label(T("<b>{0}</b> · değer {1}{2}", name, Fmt.Mls(J.D(o, "fiyat")), (J.B(o, "satista_mi") ? T(" · <color=#FFD54A>satışta</color>") : "")), label);
         GUILayout.FlexibleSpace();
         if (J.B(o, "satista_mi"))
         {
-            if (ActButton("Satıştan çek", 32, 110)) Act(path + "/cek", new Dictionary<string, object> { { "id", id } }, "İlan kaldırıldı.", key);
+            if (ActButton(T("Satıştan çek"), 32, 110)) Act(path + "/cek", new Dictionary<string, object> { { "id", id } }, T("İlan kaldırıldı."), key);
         }
         else
         {
-            sellText = HtmlInput.Field("satis" + id, sellText, "Fiyat", field, false, true, 12, GUILayout.Width(110), GUILayout.Height(32));
-            if (ActButton("Sat", 32, 60))
+            sellText = HtmlInput.Field("satis" + id, sellText, T("Fiyat"), field, false, true, 12, GUILayout.Width(110), GUILayout.Height(32));
+            if (ActButton(T("Sat"), 32, 60))
             {
                 long px = (long)ParsePrice(sellText);
-                if (px <= 0) { phoneMsg = "Satış fiyatı yaz."; phoneOk = false; }
-                else Act(path + "/sat", new Dictionary<string, object> { { "id", id }, { "fiyat", px } }, "Satışa çıkarıldı.", key);
+                if (px <= 0) { phoneMsg = T("Satış fiyatı yaz."); phoneOk = false; }
+                else Act(path + "/sat", new Dictionary<string, object> { { "id", id }, { "fiyat", px } }, T("Satışa çıkarıldı."), key);
             }
         }
         GUILayout.EndHorizontal();
@@ -510,20 +510,20 @@ public partial class SalonDirector
         if (!NeedLive()) return;
         if (auctionSel > 0)
         {
-            if (GUILayout.Button("← Bütün eserler", GUILayout.Height(32))) { auctionSel = 0; return; }
+            if (GUILayout.Button(T("← Bütün eserler"), GUILayout.Height(32))) { auctionSel = 0; return; }
             DrawLot(auctionSel);
             return;
         }
         if (!Data("muz", out var d)) return;
         var list = J.A(d, "aktif");
-        GUILayout.Label("Açık artırmadaki eserler. Bir esere dokun, teklif ver.", small);
-        if (list.Count == 0) GUILayout.Label("Şu an açık artırma yok.", label);
+        GUILayout.Label(T("Açık artırmadaki eserler. Bir esere dokun, teklif ver."), small);
+        if (list.Count == 0) GUILayout.Label(T("Şu an açık artırma yok."), label);
         foreach (var x in list)
         {
             var o = x as Dictionary<string, object>;
             if (o == null) continue;
             long id = J.L(o, "id");
-            if (GUILayout.Button($"<b>{J.S(o, "urun_adi")}</b> · {J.S(o, "sanatci")}\n<size=12>güncel {Fmt.Mls(J.D(o, "guncel_fiyat"))} · bitiş {ShortDate(J.S(o, "bitis_tarihi"))}</size>",
+            if (GUILayout.Button(T("<b>{0}</b> · {1}\n<size=12>güncel {2} · bitiş {3}</size>", J.S(o, "urun_adi"), J.S(o, "sanatci"), Fmt.Mls(J.D(o, "guncel_fiyat")), ShortDate(J.S(o, "bitis_tarihi"))),
                 new GUIStyle(btn) { alignment = TextAnchor.MiddleLeft, fontStyle = FontStyle.Normal, wordWrap = true }, GUILayout.Height(52)))
             {
                 auctionSel = id;
@@ -534,7 +534,7 @@ public partial class SalonDirector
         var ended = J.A(d, "bitmis");
         if (ended.Count > 0)
         {
-            Title("Biten müzayedeler");
+            Title(T("Biten müzayedeler"));
             for (int i = 0; i < ended.Count && i < 10; i++)
                 Row(J.S(ended[i], "urun_adi"), Fmt.Mls(J.D(ended[i], "guncel_fiyat")));
         }
@@ -545,23 +545,23 @@ public partial class SalonDirector
         if (!Data("muz" + id, out var d)) return;
         var u = J.O(d, "urun");
         GUILayout.Label($"<b>{J.S(u, "urun_adi")}</b>", h2);
-        if (J.S(u, "sanatci") != "") Row("Sanatçı", J.S(u, "sanatci"));
+        if (J.S(u, "sanatci") != "") Row(T("Sanatçı"), J.S(u, "sanatci"));
         if (J.S(u, "aciklama") != "") GUILayout.Label(J.S(u, "aciklama"), small);
-        Row("Güncel fiyat", $"<b>{Fmt.Mls(J.D(u, "guncel_fiyat"))}</b>");
-        Row("Bitiş", ShortDate(J.S(u, "bitis_tarihi")));
+        Row(T("Güncel fiyat"), $"<b>{Fmt.Mls(J.D(u, "guncel_fiyat"))}</b>");
+        Row(T("Bitiş"), ShortDate(J.S(u, "bitis_tarihi")));
         GUILayout.BeginHorizontal();
-        bidText = HtmlInput.Field("teklif", bidText, "Teklifin (MLS)", field, false, true, 12, GUILayout.Height(40), GUILayout.MinWidth(120));
-        if (ActButton("Teklif ver", 40, 110))
+        bidText = HtmlInput.Field("teklif", bidText, T("Teklifin (MLS)"), field, false, true, 12, GUILayout.Height(40), GUILayout.MinWidth(120));
+        if (ActButton(T("Teklif ver"), 40, 110))
         {
             long b = (long)ParsePrice(bidText);
-            if (b <= 0) { phoneMsg = "Bir teklif yaz."; phoneOk = false; }
-            else Act("/muzayede/" + id + "/teklif", new Dictionary<string, object> { { "teklif", b } }, "Teklifin alındı. Biri geçerse haber verilir.", "muz", "muz" + id);
+            if (b <= 0) { phoneMsg = T("Bir teklif yaz."); phoneOk = false; }
+            else Act("/muzayede/" + id + "/teklif", new Dictionary<string, object> { { "teklif", b } }, T("Teklifin alındı. Biri geçerse haber verilir."), "muz", "muz" + id);
         }
         GUILayout.EndHorizontal();
         var bids = J.A(d, "teklifler");
         if (bids.Count > 0)
         {
-            Title("Teklifler");
+            Title(T("Teklifler"));
             for (int i = 0; i < bids.Count && i < 12; i++)
             {
                 var o = bids[i] as Dictionary<string, object>;
@@ -577,27 +577,27 @@ public partial class SalonDirector
     void TabBuffet()
     {
         if (!NeedLive()) return;
-        Title("Aylık otobüs bileti");
+        Title(T("Aylık otobüs bileti"));
         if (Data("ulasim", out var u))
         {
             var s = J.O(u, "status");
-            if (J.B(s, "bilet_odendi")) GUILayout.Label("<color=#5BE38A>Bu ayın bileti alındı.</color> Otobüse binebilirsin.", label);
+            if (J.B(s, "bilet_odendi")) GUILayout.Label(T("<color=#5BE38A>Bu ayın bileti alındı.</color> Otobüse binebilirsin."), label);
             else
             {
-                GUILayout.Label($"Bu ay biletini almadın. Almazsan ay sonunda {Fmt.Mls(J.D(s, "bilet_ceza"))} ceza kesilir.", small);
-                if (ActButton($"Bilet al ({Fmt.Mls(J.D(s, "bilet_ucreti"))})", 42))
-                    Act("/hayat/ulasim/bilet", null, "Biletin alındı, bu ay otobüse binebilirsin.", "ulasim");
+                GUILayout.Label(T("Bu ay biletini almadın. Almazsan ay sonunda {0} ceza kesilir.", Fmt.Mls(J.D(s, "bilet_ceza"))), small);
+                if (ActButton(T("Bilet al ({0})", Fmt.Mls(J.D(s, "bilet_ucreti"))), 42))
+                    Act("/hayat/ulasim/bilet", null, T("Biletin alındı, bu ay otobüse binebilirsin."), "ulasim");
             }
         }
-        Title("Bu ayın yemeği");
+        Title(T("Bu ayın yemeği"));
         if (!Data("yemek", out var y)) return;
         var st = J.O(y, "status");
         if (J.B(st, "bu_ay_alindi"))
         {
-            GUILayout.Label($"<color=#5BE38A>Bu ayın yemeği alındı</color>: {J.S(J.O(st, "satin"), "isim")}. Afiyet olsun!", label);
+            GUILayout.Label(T("<color=#5BE38A>Bu ayın yemeği alındı</color>: {0}. Afiyet olsun!", J.S(J.O(st, "satin"), "isim")), label);
             return;
         }
-        GUILayout.Label($"Her ay bir yemek alman gerekir; almazsan {Fmt.Mls(J.D(st, "ceza"))} ceza.", small);
+        GUILayout.Label(T("Her ay bir yemek alman gerekir; almazsan {0} ceza.", Fmt.Mls(J.D(st, "ceza"))), small);
         long rec = J.L(st, "onerilen_id");
         foreach (var x in J.A(st, "tum_yemekler"))
         {
@@ -608,8 +608,8 @@ public partial class SalonDirector
             GUILayout.BeginHorizontal();
             GUILayout.Label($"<b>{name}</b>{(id == rec ? " <color=#FFD54A>* bu ayın önerisi</color>" : "")} · {Fmt.Mls(J.D(o, "fiyat"))}", label);
             GUILayout.FlexibleSpace();
-            if (ActButton("Al", 32, 70))
-                Act("/hayat/yemek/satin-al", new Dictionary<string, object> { { "yemek_id", id } }, $"{name} aldın. Afiyet olsun!", "yemek");
+            if (ActButton(T("Al"), 32, 70))
+                Act("/hayat/yemek/satin-al", new Dictionary<string, object> { { "yemek_id", id } }, T("{0} aldın. Afiyet olsun!", name), "yemek");
             GUILayout.EndHorizontal();
         }
     }
@@ -622,22 +622,22 @@ public partial class SalonDirector
         {
             var s = J.O(u, "status");
             ticket = J.B(s, "bilet_odendi");
-            Row("Aylık bilet", Ok(ticket, "alındı", $"alınmadı ({Fmt.Mls(J.D(s, "bilet_ucreti"))})"));
+            Row(T("Aylık bilet"), Ok(ticket, T("alındı"), T("alınmadı ({0})", Fmt.Mls(J.D(s, "bilet_ucreti")))));
         }
         if (!atStop)
         {
-            GUILayout.Label("Otobüse binmek için caddedeki bir durağa yürü (meydandan güneye). Aylık bileti durağın yanındaki büfeden alırsın.", small);
+            GUILayout.Label(T("Otobüse binmek için caddedeki bir durağa yürü (meydandan güneye). Aylık bileti durağın yanındaki büfeden alırsın."), small);
             foreach (var st in City.Stops) GUILayout.Label("• " + st.name, small);
             GUILayout.Space(6);
-            if (GUILayout.Button("Eve dön", btn, GUILayout.Height(40))) { GoTo(Town.HomeSpawn, Town.HomeFacing); Show("Evindesin", 1.5f); }
+            if (GUILayout.Button(T("Eve dön"), btn, GUILayout.Height(40))) { GoTo(Town.HomeSpawn, Town.HomeFacing); Show(T("Evindesin"), 1.5f); }
             return;
         }
         if (!ticket)
         {
-            GUILayout.Label("<color=#FF7A7A>Bu ay otobüs biletin yok.</color> Hemen yandaki büfeden alabilirsin.", label);
+            GUILayout.Label(T("<color=#FF7A7A>Bu ay otobüs biletin yok.</color> Hemen yandaki büfeden alabilirsin."), label);
             return;
         }
-        GUILayout.Label("Nereye gidiyorsun?", label);
+        GUILayout.Label(T("Nereye gidiyorsun?"), label);
         for (int i = 0; i < City.Stops.Length; i++)
         {
             if (i == placeArg) continue;
@@ -650,7 +650,7 @@ public partial class SalonDirector
     {
         GoTo(City.StopPoint(i), Quaternion.LookRotation(Vector3.back));
         fadeUntil = Time.time + 1.6f;
-        Show("Otobüsle geldin: " + City.Stops[i].name, 2.5f);
+        Show(T("Otobüsle geldin: ") + City.Stops[i].name, 2.5f);
         if (Bell.I) Bell.I.Tick();
     }
 
@@ -660,20 +660,20 @@ public partial class SalonDirector
         if (Data("ev", out var e))
         {
             var s = J.O(e, "status");
-            Row("Konut", $"<b>{J.S(s, "ev_adi")}</b>");
-            Row("Aylık ev gideri", Fmt.Mls(J.D(s, "gider_tutari")));
-            if (J.D(s, "gider_ceza") > 0) Row("Gecikme cezası", Fmt.Mls(J.D(s, "gider_ceza")));
-            if (J.B(s, "gider_odendi")) GUILayout.Label("<color=#5BE38A>Bu ayın ev faturası ödendi.</color>", label);
-            else if (ActButton($"Ev faturasını öde ({Fmt.Mls(J.D(s, "gider_tutari"))})", 46))
-                Act("/hayat/ev/gider", null, "Ev faturan ödendi. Teşekkür ederiz!", "ev");
+            Row(T("Konut"), $"<b>{J.S(s, "ev_adi")}</b>");
+            Row(T("Aylık ev gideri"), Fmt.Mls(J.D(s, "gider_tutari")));
+            if (J.D(s, "gider_ceza") > 0) Row(T("Gecikme cezası"), Fmt.Mls(J.D(s, "gider_ceza")));
+            if (J.B(s, "gider_odendi")) GUILayout.Label(T("<color=#5BE38A>Bu ayın ev faturası ödendi.</color>"), label);
+            else if (ActButton(T("Ev faturasını öde ({0})", Fmt.Mls(J.D(s, "gider_tutari"))), 46))
+                Act("/hayat/ev/gider", null, T("Ev faturan ödendi. Teşekkür ederiz!"), "ev");
         }
-        Title("Varlıkların");
-        Row("Nakit", Fmt.Mls(Market.I.cash));
-        Row("Hisseler", Fmt.Mls(Market.I.stockValue));
+        Title(T("Varlıkların"));
+        Row(T("Nakit"), Fmt.Mls(Market.I.cash));
+        Row(T("Hisseler"), Fmt.Mls(Market.I.stockValue));
         if (Data("varlik", out var v))
         {
-            Row("Sahip olduğun evler", Fmt.N(J.A(v, "evler").Count));
-            Row("Sahip olduğun arabalar", Fmt.N(J.A(v, "araclar").Count));
+            Row(T("Sahip olduğun evler"), Fmt.N(J.A(v, "evler").Count));
+            Row(T("Sahip olduğun arabalar"), Fmt.N(J.A(v, "araclar").Count));
         }
     }
 
@@ -683,8 +683,8 @@ public partial class SalonDirector
     {
         if (!NeedLive()) return;
         if (!Data(key, out var d)) return;
-        if (payPath != null && ActButton("Tamamlanan görevlerin ödülünü al", 38))
-            Act(payPath, null, "Ödüller hesabına geçti.", key);
+        if (payPath != null && ActButton(T("Tamamlanan görevlerin ödülünü al"), 38))
+            Act(payPath, null, T("Ödüller hesabına geçti."), key);
         Tree(d, 0);
     }
 
@@ -738,28 +738,28 @@ public partial class SalonDirector
         PanelBox(r);
         GUILayout.BeginArea(new Rect(r.x + 18, r.y + 12, w - 36, h - 22));
         bool father = dialogWho == 0;
-        GUILayout.Label(father ? "<b>Baban</b>" : "<b>Annen</b>", h2);
+        GUILayout.Label(father ? T("<b>Baban</b>") : T("<b>Annen</b>"), h2);
         string mes = J.S(J.O(m.dash, "is"), "aktif_meslek");
         bool give = father && (!m.Live || (allowanceKnown && !allowanceTaken));
         string text;
         if (father)
         {
             if (give)
-                text = "Günaydın evladım! Artık büyüdün, kendi ayaklarının üzerinde durma zamanı. Al şu 10.000 MLS'yi; bu benden son harçlık!\n\n" +
+                text = T("Günaydın evladım! Artık büyüdün, kendi ayaklarının üzerinde durma zamanı. Al şu 10.000 MLS'yi; bu benden son harçlık!\n\n") +
                        "Şehre in, caddenin batısındaki İş Bulma Merkezi'ne git ve kendine bir iş bul. Otobüs durakları caddede; aylık bileti duraktaki büfeden alırsın.";
             else if (mes == "")
-                text = "Hâlâ iş bulamadın mı? Oyalanma! İş Bulma Merkezi caddenin batısında, \"Evler\" durağının karşısında. Önce bir işe gir, sonra borsaya bakarsın.";
+                text = T("Hâlâ iş bulamadın mı? Oyalanma! İş Bulma Merkezi caddenin batısında, \"Evler\" durağının karşısında. Önce bir işe gir, sonra borsaya bakarsın.");
             else
-                text = $"Aferin evladım! {mes} olarak çalıştığını duydum, gurur duyuyorum. Paranı iyi değerlendir: borsa binası meydanın kuzeyinde.";
+                text = T("Aferin evladım! {0} olarak çalıştığını duydum, gurur duyuyorum. Paranı iyi değerlendir: borsa binası meydanın kuzeyinde.", mes);
         }
         else
         {
             var y = J.O(m.dash, "yemek");
             var ev = J.O(m.dash, "ev");
-            text = "Günaydın canım, kahvaltın masada! Bu ayın yemeğini durak büfesinden almayı unutma; almazsan ay sonunda ceza yersin. " +
-                   "Ev faturasını da MTBS Bankası'nın veznesinde ödüyoruz.";
+            text = T("Günaydın canım, kahvaltın masada! Bu ayın yemeğini durak büfesinden almayı unutma; almazsan ay sonunda ceza yersin. ") +
+                   T("Ev faturasını da MTBS Bankası'nın veznesinde ödüyoruz.");
             if (m.Live && ev.Count > 0)
-                text += $"\n\nYemek: {(J.B(y, "bu_ay_alindi") ? "alındı ✓" : "alınmadı")} · Ev faturası: {(J.B(ev, "gider_odendi") ? "ödendi ✓" : "ödenmedi")}";
+                text += T("\n\nYemek: {0} · Ev faturası: {1}", (J.B(y, "bu_ay_alindi") ? T("alındı ✓") : T("alınmadı")), (J.B(ev, "gider_odendi") ? T("ödendi ✓") : T("ödenmedi")));
         }
         GUILayout.Label(text, label);
         GUILayout.FlexibleSpace();
@@ -769,11 +769,11 @@ public partial class SalonDirector
         {
             GUI.enabled = !worldBusy;
             GUI.backgroundColor = new Color(0.35f, 0.85f, 0.5f);
-            if (GUILayout.Button("Sağ ol baba! (10.000 MLS)", btn, GUILayout.Height(44))) TakeAllowance();
+            if (GUILayout.Button(T("Sağ ol baba! (10.000 MLS)"), btn, GUILayout.Height(44))) TakeAllowance();
             GUI.backgroundColor = SalonDirector.BtnBase;
             GUI.enabled = true;
         }
-        if (GUILayout.Button(give ? "Sonra" : "Tamam", GUILayout.Height(44), GUILayout.Width(110))) ClosePanel();
+        if (GUILayout.Button(give ? T("Sonra") : T("Tamam"), GUILayout.Height(44), GUILayout.Width(110))) ClosePanel();
         GUILayout.EndHorizontal();
         GUILayout.EndArea();
     }
@@ -785,12 +785,12 @@ public partial class SalonDirector
         {
             m.DemoGift(10000);
             allowanceTaken = true;
-            dialogMsg = "Demo: 10.000 MLS sanal harçlık eklendi.";
+            dialogMsg = T("Demo: 10.000 MLS sanal harçlık eklendi.");
             dialogOk = true;
-            Show("+10.000 MLS", 2f);
+            Show(T("+10.000 MLS"), 2f);
             if (Bell.I) Bell.I.Ring();
             ClosePanel();
-            Hint("Babanın dediği gibi: şehre in, İş Bulma Merkezi'ne git.", 8f);
+            Hint(T("Babanın dediği gibi: şehre in, İş Bulma Merkezi'ne git."), 8f);
             return;
         }
         worldBusy = true;
@@ -803,12 +803,12 @@ public partial class SalonDirector
             m.RefreshStatus();
             if (given)
             {
-                Show("+10.000 MLS · babandan harçlık", 2.5f);
+                Show(T("+10.000 MLS · babandan harçlık"), 2.5f);
                 if (Bell.I) Bell.I.Ring();
             }
-            else Show("Harçlığını daha önce almıştın", 2f);
+            else Show(T("Harçlığını daha önce almıştın"), 2f);
             ClosePanel();
-            Hint("Babanın dediği gibi: şehre in, İş Bulma Merkezi'ne git (meydandan güneye, cadde).", 9f);
+            Hint(T("Babanın dediği gibi: şehre in, İş Bulma Merkezi'ne git (meydandan güneye, cadde)."), 9f);
         });
     }
 

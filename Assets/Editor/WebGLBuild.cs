@@ -56,7 +56,7 @@ public static class WebGLBuild
         AssetDatabase.Refresh();
     }
 
-    static void EnsureShaders()
+    public static void EnsureShaders()
     {
         Shader standard = Shader.Find("Standard");
         Shader text = Shader.Find("GUI/Text Shader");
@@ -79,7 +79,7 @@ public static class WebGLBuild
         AssetDatabase.SaveAssets();
     }
 
-    static string ArgValue(string name)
+    public static string ArgValue(string name)
     {
         string[] args = Environment.GetCommandLineArgs();
         for (int i = 0; i < args.Length - 1; i++)

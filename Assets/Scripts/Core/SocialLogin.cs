@@ -16,6 +16,11 @@ public class SocialLogin : MonoBehaviour
     static string SocialPending() => null;
 #endif
 
+#if UNITY_WEBGL
+    public const bool Available = true;
+#else
+    public const bool Available = false; // mağaza sürümünde yerel Google/Apple girişi henüz yok: e-posta ve misafir
+#endif
     public static SocialLogin I { get; private set; }
     public static event Action<string, string, string, string> Received;
     static string pending;

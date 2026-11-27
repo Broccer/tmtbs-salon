@@ -51,9 +51,9 @@ public class Podium : MonoBehaviour
         Gfx.Box("Kursu_Masa", t, new Vector3(-1.6f, 1.45f, zc - 0.5f), new Vector3(1.1f, 1.1f, 0.6f), wood, true);
         Gfx.Box("Kursu_Ust", t, new Vector3(-1.6f, 2.03f, zc - 0.55f), new Vector3(1.25f, 0.06f, 0.75f), wood);
         Gfx.Box("Kursu_Plaka", t, new Vector3(-1.6f, 1.55f, zc - 0.81f), new Vector3(0.9f, 0.32f, 0.02f), gold);
-        Gfx.Text("Kursu_Yazi", t, new Vector3(-1.6f, 1.55f, zc - 0.83f), Quaternion.identity, "BORSA YÖNETİMİ", 0.13f, new Color(0.15f, 0.1f, 0.03f));
+        Gfx.Text("Kursu_Yazi", t, new Vector3(-1.6f, 1.55f, zc - 0.83f), Quaternion.identity, Loc.T("BORSA YÖNETİMİ"), 0.13f, new Color(0.15f, 0.1f, 0.03f));
         Gfx.Text("Kursu_Baslik", t, new Vector3(0, 2.95f, front - 0.12f), Quaternion.identity,
-            "BORSA YÖNETİM KURULU  ·  DUYURU KÜRSÜSÜ", 0.3f, new Color(1f, 0.8f, 0.3f));
+            Loc.T("BORSA YÖNETİM KURULU  ·  DUYURU KÜRSÜSÜ"), 0.3f, new Color(1f, 0.8f, 0.3f));
 
         // Gong: iki dikme + üst kiriş + asılı bronz disk + tokmak
         float gx = 2.6f, gy = 0.9f;
@@ -106,7 +106,7 @@ public class Podium : MonoBehaviour
         var it = new GameObject("Kursu_Nokta");
         it.transform.SetParent(t, false);
         it.transform.localPosition = new Vector3(0, 0, zf - 1.2f);
-        Interactable.Make(it, Interactable.Kind.Podium, Vector3.zero, "Borsa yönetimi · duyurular", "DUYURU", 3.2f);
+        Interactable.Make(it, Interactable.Kind.Podium, Vector3.zero, Loc.T("Borsa yönetimi · duyurular"), Loc.T("DUYURU"), 3.2f);
 
         // Ses kaynakları (3B: yaklaştıkça güçlenir)
         p.gongSrc = pivot.gameObject.AddComponent<AudioSource>();
@@ -121,7 +121,7 @@ public class Podium : MonoBehaviour
     {
         gongClip = SoundSynth.Gong();
         chimeClip = SoundSynth.Chime();
-        SetStrip("Trade of MTBS borsasına hoş geldiniz · Seans açık · İyi işlemler!");
+        SetStrip(Loc.T("Trade of MTBS borsasına hoş geldiniz · Seans açık · İyi işlemler!"));
     }
 
     void Update()
@@ -134,7 +134,7 @@ public class Podium : MonoBehaviour
         else if (h != lastHour)
         {
             lastHour = h;
-            pending.Enqueue($"Saat {h:00}.00 · seans devam ediyor. Bol kazançlar!");
+            pending.Enqueue(Loc.T("Saat {0}.00 · seans devam ediyor. Bol kazançlar!", (h).ToString("00")));
         }
 
         // Ara sıra günün öne çıkanları (gongsuz, kısa zil)
@@ -210,8 +210,8 @@ public class Podium : MonoBehaviour
             if (down == null || s.change < down.change) down = s;
         }
         if (up == null) return null;
-        string t = $"Günün yükseleni {up.name} {Fmt.Pct(up.change)}";
-        if (down != null && down != up && down.change < 0) t += $", düşeni {down.name} {Fmt.Pct(down.change)}";
+        string t = Loc.T("Günün yükseleni {0} {1}", up.name, Fmt.Pct(up.change));
+        if (down != null && down != up && down.change < 0) t += Loc.T(", düşeni {0} {1}", down.name, Fmt.Pct(down.change));
         return t + ".";
     }
 

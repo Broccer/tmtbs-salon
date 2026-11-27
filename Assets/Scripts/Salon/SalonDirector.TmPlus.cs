@@ -88,7 +88,7 @@ public partial class SalonDirector
     void TierCard(double net)
     {
         int k = TierOf(net);
-        GUILayout.Label($"<color=#FFD54A><b>Sv. {k} · {TierName(k)}</b></color>", label);
+        GUILayout.Label(T("<color=#FFD54A><b>Sv. {0} · {1}</b></color>", k, TierName(k)), label);
         if (k < Tiers.Length)
         {
             double lo = Tiers[k - 1].esik, hi = Tiers[k].esik;
@@ -490,7 +490,7 @@ public partial class SalonDirector
         }
         if (!m.Live)
         {
-            GUILayout.Label($"<b>{m.userName}</b>  <color=#FFB74D>DEMO</color>", h2);
+            GUILayout.Label(T("<b>{0}</b>  <color=#FFB74D>DEMO</color>", m.userName), h2);
             GUILayout.Label(T("Profil, sıralama ve düello hesabınla giriş yapınca açılır."), small);
             LanguagePicker();
             GUILayout.Space(10);
@@ -511,7 +511,7 @@ public partial class SalonDirector
         GUILayout.Space(6);
         GUILayout.BeginVertical();
         GUILayout.Label("<b>" + (me ? T("{0} (sen)", ad) : ad) + "</b>", h2);
-        GUILayout.Label($"<color=#FFD54A>Sv. {k} · {TierName(k)}</color>", small);
+        GUILayout.Label(T("<color=#FFD54A>Sv. {0} · {1}</color>", k, TierName(k)), small);
         GUILayout.EndVertical();
         GUILayout.FlexibleSpace();
         GUILayout.Label($"<size=11>{T("Net değer")}</size>\n<b><color=#FFD54A>{Fmt.Mls(J.D(p, "net"))}</color></b>", right);
@@ -550,7 +550,7 @@ public partial class SalonDirector
                 string medal = sira == 1 ? "#FFD54A" : sira == 2 ? "#D9DEE7" : "#E0A06A";
                 string dn = PeriodName(J.S(c, "donem"));
                 int adet = (int)J.D(c, "adet");
-                Row($"<color={medal}><b>{T("{0}. sıra", sira)}</b></color> · {dn} · Sv. {Fmt.N(J.D(c, "kademe"))} {TierName((int)J.D(c, "kademe"))}", adet > 1 ? "×" + adet : "");
+                Row(T("<color={0}><b>{1}</b></color> · {2} · Sv. {3} {4}", medal, T("{0}. sıra", sira), dn, Fmt.N(J.D(c, "kademe")), TierName((int)J.D(c, "kademe"))), adet > 1 ? "×" + adet : "");
             }
         }
         GUILayout.Label(T("Gün, hafta, ay ve yıl kapanınca kademesinde ilk 3'e girenler kart kazanır."), small);
@@ -644,6 +644,22 @@ public partial class SalonDirector
         return k;
     }
 
+    bool langOpen;
+
+    /// <summary>Giriş ekranında küçük dil düğmesi; dokununca 9 dil açılır.</summary>
+    void LoginLanguage()
+    {
+        string cur = Loc.Lang;
+        string nm = cur;
+        foreach (var l in Loc.Langs) if (l.code == cur) nm = l.name;
+        GUILayout.BeginHorizontal();
+        GUILayout.FlexibleSpace();
+        if (GUILayout.Button(T("Dil") + ": " + nm + (langOpen ? "  ▲" : "  ▼"), GUILayout.Height(30), GUILayout.Width(200))) langOpen = !langOpen;
+        GUILayout.FlexibleSpace();
+        GUILayout.EndHorizontal();
+        if (langOpen) LanguagePicker();
+    }
+
     void LanguagePicker()
     {
         GUILayout.Label(T("Dil"), small);
@@ -652,7 +668,7 @@ public partial class SalonDirector
         {
             GUILayout.BeginHorizontal();
             for (int j = i; j < i + per && j < Loc.Langs.Length; j++)
-                if (TabBtn(Loc.Langs[j].name, Loc.Lang == Loc.Langs[j].code, 32)) Loc.Set(Loc.Langs[j].code);
+                if (TabBtn(Loc.Langs[j].name, Loc.Lang == Loc.Langs[j].code, 32) && Loc.Lang != Loc.Langs[j].code) { Loc.Set(Loc.Langs[j].code); SalonBuilder.Restart(); }
             GUILayout.EndHorizontal();
         }
     }
@@ -805,7 +821,7 @@ public partial class SalonDirector
         {
             Title(T("Ürünler"));
             for (int i = 0; i < urun.Count && i < 12; i++)
-                Row("• " + J.S(urun[i], "isim") + $" <size=11><color=#9AA6BC>{J.S(urun[i], "kategori")}</color></size>", Fmt.N2(J.D(urun[i], "fiyat")) + " MLS");
+                Row("• " + J.S(urun[i], "isim") + $" <size=11><color=#9AA6BC>{J.S(urun[i], "kategori")}</color></size>", Fmt.N2(J.D(urun[i], "fiyat")) + T(" MLS"));
         }
         var tem = J.A(d, "temettuler");
         if (tem.Count > 0)

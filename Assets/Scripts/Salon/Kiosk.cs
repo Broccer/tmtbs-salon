@@ -68,7 +68,7 @@ public class Kiosk : MonoBehaviour
             bool buy = s > 0;
             var lv = Gfx.Box("Levha", t, new Vector3(s * 0.62f, 1.2f, 0.18f), new Vector3(0.5f, 0.2f, 0.03f), Gfx.Lit(Panel, 0.8f));
             lv.transform.localRotation = Quaternion.Euler(-12f, 0, 0);
-            Gfx.Text("Levha_Yazi", t, new Vector3(s * 0.62f, 1.2f, 0.20f), back * Quaternion.Euler(12f, 0, 0), buy ? "ALIŞ" : "SATIŞ", 0.1f, buy ? Green : Red);
+            Gfx.Text("Levha_Yazi", t, new Vector3(s * 0.62f, 1.2f, 0.20f), back * Quaternion.Euler(12f, 0, 0), buy ? Loc.T("ALIŞ") : Loc.T("SATIŞ"), 0.1f, buy ? Green : Red);
         }
         // Arka duvara yaslı pano ve tabela
         float wz = -1.52f;
@@ -108,7 +108,7 @@ public class Kiosk : MonoBehaviour
             }
         }
 
-        k.interact = Interactable.Make(go, Interactable.Kind.Counter, new Vector3(0, 0, 1.35f), "", "İŞLEM", 2.2f);
+        k.interact = Interactable.Make(go, Interactable.Kind.Counter, new Vector3(0, 0, 1.35f), "", Loc.T("İŞLEM"), 2.2f);
         k.interact.counter = k;
         return k;
     }
@@ -127,14 +127,14 @@ public class Kiosk : MonoBehaviour
         string n = s.name.Length > 15 ? s.name.Substring(0, 14) + "…" : s.name;
         string chg = $"<color={Fmt.ChangeColor(s.change)}>{(s.change > 0.05 ? "▲" : s.change < -0.05 ? "▼" : "■")} {Fmt.Pct(s.change)}</color>";
         Set(signName, n);
-        Set(signPrice, Fmt.N2(s.price) + " <size=40>MLS</size>");
+        Set(signPrice, Fmt.N2(s.price) + Loc.T(" <size=40>MLS</size>"));
         Set(signChange, chg);
-        Set(signBook, $"<color=#5BE38A>Alış {(s.bestBid > 0 ? Fmt.N2(s.bestBid) : "—")}</color>    <color=#FF7A7A>Satış {(s.bestAsk > 0 ? Fmt.N2(s.bestAsk) : "—")}</color>");
+        Set(signBook, Loc.T("<color=#5BE38A>Alış {0}</color>    <color=#FF7A7A>Satış {1}</color>", (s.bestBid > 0 ? Fmt.N2(s.bestBid) : "—"), (s.bestAsk > 0 ? Fmt.N2(s.bestAsk) : "—")));
         Set(deskName, n);
         Set(deskPrice, Fmt.N2(s.price) + "  " + chg);
-        Set(deskBid, s.bestBid > 0 ? "Alış " + Fmt.N2(s.bestBid) : "");
-        Set(deskAsk, s.bestAsk > 0 ? "Satış " + Fmt.N2(s.bestAsk) : "");
-        if (interact) interact.prompt = s.name + " bankosunda işlem yap";
+        Set(deskBid, s.bestBid > 0 ? Loc.T("Alış ") + Fmt.N2(s.bestBid) : "");
+        Set(deskAsk, s.bestAsk > 0 ? Loc.T("Satış ") + Fmt.N2(s.bestAsk) : "");
+        if (interact) interact.prompt = Loc.T("{0} bankosunda işlem yap", s.name);
         target = s.change > 0.05 ? new Color(0.2f, 0.85f, 0.4f) : s.change < -0.05 ? new Color(1f, 0.3f, 0.3f) : new Color(0.75f, 0.78f, 0.85f);
         if (s.prevPrice > 0 && s.price != s.prevPrice)
         {

@@ -71,7 +71,7 @@ public class Boards : MonoBehaviour
             ticker.text = sb.ToString();
             tickerWidth = Mathf.Max(20f, ticker.text.Length * 0.09f); // yaklaşık genişlik; tam ölçüm Update'te
         }
-        else if (ticker) ticker.text = "TRADE OF MTBS · SEANS SALONU";
+        else if (ticker) ticker.text = Loc.T("TRADE OF MTBS · SEANS SALONU");
 
         // Endeks: piyasa değeriyle ağırlıklı ortalama değişim
         string idx = "—";
@@ -96,9 +96,9 @@ public class Boards : MonoBehaviour
             {
                 double cap = list.Sum(s => Math.Max(1, s.marketCap));
                 double ch = list.Sum(s => s.change * Math.Max(1, s.marketCap)) / cap;
-                facadeIndex.text = $"TMTBS ENDEKS  <color={Fmt.ChangeColor(ch)}>{(ch > 0.05 ? "▲" : ch < -0.05 ? "▼" : "■")} {Fmt.Pct(ch)}</color>";
+                facadeIndex.text = Loc.T("TMTBS ENDEKS  <color={0}>{1} {2}</color>", Fmt.ChangeColor(ch), (ch > 0.05 ? "▲" : ch < -0.05 ? "▼" : "■"), Fmt.Pct(ch));
             }
-            else facadeIndex.text = "TMTBS ENDEKS  —";
+            else facadeIndex.text = Loc.T("TMTBS ENDEKS  —");
         }
         var up = list == null ? new System.Collections.Generic.List<Stock>() : list.OrderByDescending(s => s.change).Take(5).ToList();
         var down = list == null ? new System.Collections.Generic.List<Stock>() : list.Where(s => !up.Contains(s)).OrderBy(s => s.change).Take(5).ToList();
@@ -127,8 +127,8 @@ public class Boards : MonoBehaviour
     void Update()
     {
         string now = DateTime.Now.ToString("HH:mm:ss");
-        if (clockL) clockL.text = "SEANS\n" + now;
-        if (clockR) clockR.text = "SEANS\n" + now;
+        if (clockL) clockL.text = Loc.T("SEANS\n") + now;
+        if (clockR) clockR.text = Loc.T("SEANS\n") + now;
 
         if (ticker)
         {

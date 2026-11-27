@@ -64,7 +64,7 @@ public class Api : MonoBehaviour
 
             string msg = data != null ? J.S(data, "message") : "";
             if (string.IsNullOrEmpty(msg))
-                msg = req.responseCode == 0 ? "Sunucuya ulaşılamadı. İnternet bağlantını kontrol et." : "Beklenmeyen bir hata oluştu.";
+                msg = req.responseCode == 0 ? Loc.T("Sunucuya ulaşılamadı. İnternet bağlantını kontrol et.") : Loc.T("Beklenmeyen bir hata oluştu.");
             fail?.Invoke(msg, req.responseCode);
         }
     }

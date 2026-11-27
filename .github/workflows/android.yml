@@ -1,0 +1,76 @@
+name: Android derle (APK + AAB)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Sürüm adı'
+        default: '1.0.0'
+      code:
+        description: 'versionCode'
+        default: '1'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        export: [androidPackage, androidAppBundle]
+    steps:
+      - uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          android: false
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-Android-${{ matrix.export }}-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: Library-Android-${{ matrix.export }}-
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Yazı tipini hazırla
+        continue-on-error: true
+        run: |
+          pip install fonttools==4.55.3 brotli
+          mkdir -p Assets/Resources/Fonts
+          python tools/fonts/build_font.py Assets/Resources/Fonts/TmtbsSans.ttf
+      - name: Unity Android derle
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: Android
+          buildMethod: AndroidBuild.Build
+          buildsPath: build
+          buildName: tmtbs3d
+          allowDirtyBuild: true
+          versioning: Custom
+          version: ${{ inputs.version }}
+          androidVersionCode: ${{ inputs.code }}
+          androidExportType: ${{ matrix.export }}
+          androidTargetSdkVersion: AndroidApiLevel35
+          androidKeystoreName: upload.keystore
+          androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          androidKeyaliasName: ${{ secrets.ANDROID_KEYALIAS_NAME }}
+          androidKeyaliasPass: ${{ secrets.ANDROID_KEYALIAS_PASS }}
+      - name: Sürüme yükle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ls -la build/Android || true
+          TAG="android-${{ inputs.version }}-${{ inputs.code }}"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --notes "Trade of MTBS 3D Android" --prerelease || true
+          for f in build/Android/*.apk build/Android/*.aab; do [ -f "$f" ] && gh release upload "$TAG" "$f" --clobber; done

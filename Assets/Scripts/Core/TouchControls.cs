@@ -131,14 +131,14 @@ public class TouchControls : MonoBehaviour
         Vector2 kd = Vector2.ClampMagnitude(k - o, 80 * u);
         Circle(o, 80 * u, new Color(1, 1, 1, stickId >= 0 ? 0.18f : 0.10f));
         Circle(o + kd, 36 * u, new Color(1f, 0.84f, 0.3f, stickId >= 0 ? 0.75f : 0.4f));
-        if (stickId < 0) Label(o + new Vector2(0, -105 * u), "yürü / dön", 14 * u);
+        if (stickId < 0) Label(o + new Vector2(0, -105 * u), Loc.T("yürü / dön"), 14 * u);
 
         // İşlem
         Circle(InteractCenter, BtnR, btnId >= 0 ? new Color(0.06f, 0.7f, 0.72f, 0.95f) : new Color(0.06f, 0.6f, 0.62f, 0.75f));
         Label(InteractCenter, InteractLabel, 17 * u);
         // Koş
         Circle(RunCenter, BtnR * 0.72f, Run ? new Color(1f, 0.6f, 0.2f, 0.85f) : new Color(1, 1, 1, 0.18f));
-        Label(RunCenter, Run ? "KOŞ ✓" : "KOŞ", 14 * u);
+        Label(RunCenter, Run ? Loc.T("KOŞ ✓") : Loc.T("KOŞ"), 14 * u);
         GUI.color = old;
     }
 

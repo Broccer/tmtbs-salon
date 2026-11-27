@@ -22,10 +22,10 @@ public static class Attendants
         var holder = new GameObject("Gorevliler").transform;
         holder.SetParent(parent, false);
         // 0 uzun saç, 1 topuz, 2 kısa küt, 3 yandan örgü/at kuyruğu
-        Make(holder, 0, new Vector3(-3.7f, 0, zOutside), 1.00f, "Hoş geldiniz!");
-        Make(holder, 1, new Vector3(3.7f, 0, zOutside), 0.96f, "Borsa MTBS'ye hoş geldiniz");
-        Make(holder, 2, new Vector3(-2.2f, 0, zInside), 1.03f, "İyi seanslar!");
-        Make(holder, 3, new Vector3(2.2f, 0, zInside), 0.98f, "Salon ileride →");
+        Make(holder, 0, new Vector3(-3.7f, 0, zOutside), 1.00f, Loc.T("Hoş geldiniz!"));
+        Make(holder, 1, new Vector3(3.7f, 0, zOutside), 0.96f, Loc.T("Borsa MTBS'ye hoş geldiniz"));
+        Make(holder, 2, new Vector3(-2.2f, 0, zInside), 1.03f, Loc.T("İyi seanslar!"));
+        Make(holder, 3, new Vector3(2.2f, 0, zInside), 0.98f, Loc.T("Salon ileride →"));
     }
 
     static void Make(Transform parent, int type, Vector3 pos, float scale, string greeting)

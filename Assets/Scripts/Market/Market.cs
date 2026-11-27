@@ -197,7 +197,7 @@ public class Market : MonoBehaviour
         mode = Mode.Live;
         stocks.Clear();
         nextOrder = 0;
-        status = "Canlı veriler yükleniyor…";
+        status = Loc.T("Canlı veriler yükleniyor…");
         Refresh();
     }
 
@@ -217,7 +217,7 @@ public class Market : MonoBehaviour
             {
                 if (Tm) ApplyTmStatus(d); else ApplyDash(d);
                 refreshing = false;
-                status = "Canlı · " + DateTime.Now.ToString("HH:mm:ss");
+                status = Loc.T("Canlı · ") + DateTime.Now.ToString("HH:mm:ss");
                 Changed?.Invoke();
             }, OnFail);
         }, OnFail);
@@ -242,7 +242,7 @@ public class Market : MonoBehaviour
     void OnFail(string msg, long code)
     {
         refreshing = false;
-        status = "Bağlantı sorunu: " + msg;
+        status = Loc.T("Bağlantı sorunu: ") + msg;
         if (code == 401)
         {
             Api.I.SetToken("");
@@ -377,7 +377,7 @@ public class Market : MonoBehaviour
     public void PlaceLimit(Stock s, bool buy, double px, long qty, long duel, Action<string, bool> done)
     {
         px = Tick.Snap(px);
-        if (qty <= 0 || px <= 0) { done("Geçersiz adet ya da fiyat.", false); return; }
+        if (qty <= 0 || px <= 0) { done(Loc.T("Geçersiz adet ya da fiyat."), false); return; }
 
         if (mode == Mode.Demo) { DemoOrder(s, buy, qty, px, done); return; }
 
@@ -387,10 +387,10 @@ public class Market : MonoBehaviour
         {
             long done_ = J.L(r, "islem_adet");
             ApplyDetail(s, J.O(r, "borsa"));
-            string verb = buy ? "alındı" : "satıldı";
-            string msg = done_ >= qty ? $"{Fmt.N(done_)} adet {verb}."
-                : done_ > 0 ? $"{Fmt.N(done_)} adet {verb}, kalan {Fmt.N(qty - done_)} adet emir defterinde bekliyor."
-                : "Emir deftere yazıldı, karşı taraf bekleniyor.";
+            string verb = buy ? Loc.T("alındı") : Loc.T("satıldı");
+            string msg = done_ >= qty ? Loc.T("{0} adet {1}.", Fmt.N(done_), verb)
+                : done_ > 0 ? Loc.T("{0} adet {1}, kalan {2} adet emir defterinde bekliyor.", Fmt.N(done_), verb, Fmt.N(qty - done_))
+                : Loc.T("Emir deftere yazıldı, karşı taraf bekleniyor.");
             done(msg, true);
             lastRefresh = -999f; // hemen yenile
         }, (m, c) => done(m, false));
@@ -398,11 +398,11 @@ public class Market : MonoBehaviour
 
     public void CancelOrder(long orderId, long duel, Action<string, bool> done)
     {
-        if (mode != Mode.Live) { done("Demo kipinde emir defteri yok.", false); return; }
+        if (mode != Mode.Live) { done(Loc.T("Demo kipinde emir defteri yok."), false); return; }
         var body = new Dictionary<string, object>();
         if (duel > 0) body["duello"] = duel;
         if (duel > 0 && Tm) body["duello"] = duel;
-        Api.I.Post(Tm ? "/tmtbs/emir/" + orderId + "/iptal" : "/borsa/emir/" + orderId + "/iptal", body, r => { done("Emir iptal edildi.", true); lastRefresh = -999f; }, (m, c) => done(m, false));
+        Api.I.Post(Tm ? "/tmtbs/emir/" + orderId + "/iptal" : "/borsa/emir/" + orderId + "/iptal", body, r => { done(Loc.T("Emir iptal edildi."), true); lastRefresh = -999f; }, (m, c) => done(m, false));
     }
 
     public void ToggleFavorite(Stock s, Action<string> done)
@@ -434,7 +434,7 @@ public class Market : MonoBehaviour
             if (err != null) { done(err, false); return; }
             credit = J.O(r, "kredi");
             RefreshStatus();
-            done($"{Fmt.Mls(J.D(r, "yatan"))} hesabına yatırıldı.", true);
+            done(Loc.T("{0} hesabına yatırıldı.", Fmt.Mls(J.D(r, "yatan"))), true);
         });
     }
 
@@ -445,7 +445,7 @@ public class Market : MonoBehaviour
             if (err != null) { done(err, false); return; }
             credit = J.O(r, "kredi");
             RefreshStatus();
-            done($"{Fmt.Mls(J.D(r, "odenen"))} borcuna ödendi.", true);
+            done(Loc.T("{0} borcuna ödendi.", Fmt.Mls(J.D(r, "odenen"))), true);
         });
     }
 
@@ -458,7 +458,7 @@ public class Market : MonoBehaviour
             if (err != null) { done(err, false); return; }
             rights = J.A(r, "haklar");
             RefreshStatus();
-            done(join ? "Sermaye artırımına katıldın." : "Haktan vazgeçtin.", true);
+            done(join ? Loc.T("Sermaye artırımına katıldın.") : Loc.T("Haktan vazgeçtin."), true);
         });
     }
 
@@ -484,12 +484,12 @@ public class Market : MonoBehaviour
         mode = Mode.Demo;
         stocks.Clear();
         nextOrder = 0;
-        userName = "Misafir";
+        userName = Loc.T("Misafir");
         cash = 100000;
         dash = new Dictionary<string, object>();
         credit = new Dictionary<string, object>();
         RecalcDemo();
-        status = "Demo · gerçek fiyatlar yükleniyor…";
+        status = Loc.T("Demo · gerçek fiyatlar yükleniyor…");
         Changed?.Invoke();
         DemoRefresh();
     }
@@ -507,12 +507,12 @@ public class Market : MonoBehaviour
             foreach (var s in stocks) s.favorite = favs.Contains(s.id);
             refreshing = false;
             RecalcDemo();
-            status = "Demo · gerçek fiyatlar · sanal para · " + DateTime.Now.ToString("HH:mm:ss");
+            status = Loc.T("Demo · gerçek fiyatlar · sanal para · ") + DateTime.Now.ToString("HH:mm:ss");
             Changed?.Invoke();
         }, (m, c) =>
         {
             refreshing = false;
-            status = "Demo · bağlantı sorunu: " + m;
+            status = Loc.T("Demo · bağlantı sorunu: ") + m;
             Changed?.Invoke();
         });
     }
@@ -537,14 +537,14 @@ public class Market : MonoBehaviour
     {
         if (buy)
         {
-            if (qty * px > cash) { done("Nakit yetmiyor.", false); return; }
+            if (qty * px > cash) { done(Loc.T("Nakit yetmiyor."), false); return; }
             s.myCost = (s.myCost * s.myQty + px * qty) / (s.myQty + qty);
             s.myQty += qty;
             cash -= qty * px;
         }
         else
         {
-            if (qty > s.myQty) { done("Elinde o kadar hisse yok.", false); return; }
+            if (qty > s.myQty) { done(Loc.T("Elinde o kadar hisse yok."), false); return; }
             s.myQty -= qty;
             cash += qty * px;
             if (s.myQty == 0) s.myCost = 0;
@@ -552,7 +552,7 @@ public class Market : MonoBehaviour
         s.myFree = s.myQty;
         RecalcDemo();
         Changed?.Invoke();
-        done($"{Fmt.N(qty)} adet {(buy ? "alındı" : "satıldı")} (demo).", true);
+        done(Loc.T("{0} adet {1} (demo).", Fmt.N(qty), (buy ? Loc.T("alındı") : Loc.T("satıldı"))), true);
     }
 
     void RecalcDemo()

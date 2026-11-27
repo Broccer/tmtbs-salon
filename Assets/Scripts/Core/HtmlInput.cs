@@ -67,8 +67,32 @@ public class HtmlInput : MonoBehaviour
             HtmlInputOpen(id, value, title, password ? 1 : 0, numeric ? 1 : 0);
         }
         catch (Exception e) { Debug.LogWarning(e); Open_ = false; WebGLInput.captureAllKeyboardInput = true; }
+#elif UNITY_ANDROID || UNITY_IOS
+        // Mağaza sürümü: telefonun kendi klavyesi
+        try
+        {
+            kbId = id;
+            kb = TouchScreenKeyboard.Open(value, numeric ? TouchScreenKeyboardType.NumberPad : TouchScreenKeyboardType.Default, false, false, password, false, title);
+            Open_ = kb != null;
+        }
+        catch (Exception e) { Debug.LogWarning(e); Open_ = false; kb = null; }
 #endif
     }
+
+#if UNITY_ANDROID || UNITY_IOS
+    static TouchScreenKeyboard kb;
+    static string kbId;
+
+    void Update()
+    {
+        if (kb == null) return;
+        var st = kb.status;
+        if (st == TouchScreenKeyboard.Status.Visible) return;
+        if (st == TouchScreenKeyboard.Status.Done) results[kbId] = kb.text ?? "";
+        kb = null;
+        Open_ = false;
+    }
+#endif
 
     // jslib: "1" + id + "\u0001" + değer (1 = Tamam, 0 = Vazgeç)
     public void OnHtmlInput(string msg)
