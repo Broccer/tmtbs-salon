@@ -127,6 +127,13 @@ public class SalonBuilder : MonoBehaviour
         director.player = player;
         director.chase = chase;
         director.boards = boards;
+
+        // --- Canlı oyuncular, borsa yönetim kürsüsü (gong + duyurular), ortam sesleri ---
+        var live = new GameObject("CanliOyuncular").AddComponent<LivePlayers>();
+        live.player = player;
+        Podium.Build(root, front: HalfD);
+        var amb = new GameObject("OrtamSesi").AddComponent<Ambience>();
+        amb.player = player.transform;
     }
 
     // ================================================================ ön duvar

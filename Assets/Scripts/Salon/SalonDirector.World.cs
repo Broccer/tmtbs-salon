@@ -120,6 +120,7 @@ public partial class SalonDirector
                 else OpenPlace("Fatura", it.arg == 1 ? "MTBS Bankası · Salon veznesi" : "MTBS Bankası · Vezne", 0);
                 return true;
             case Interactable.Kind.Door: OpenGate(); return true;
+            case Interactable.Kind.Podium: OpenPlace("Kürsü", "Borsa Yönetimi · Duyurular", 0); return true;
             case Interactable.Kind.Duel:
                 if (Market.I.Tm) OpenPlace("Düello", "Düello Salonu", 0);
                 else Hint("Düello Trade of MTBS hesabıyla oynanır. Menü → Profil → çıkış yapıp Trade of MTBS ile gir.", 5f);
@@ -155,6 +156,7 @@ public partial class SalonDirector
 
     void LoadTabName(string tab)
     {
+        if (tab == "Kürsü") return; // kürsü kendi verisini (duyurular) tutar
         var m = Market.I;
         if (m.Tm && LoadTm(tab)) return;
         switch (tab)
@@ -178,8 +180,23 @@ public partial class SalonDirector
         }
     }
 
+    /// <summary>Kürsü: borsa yönetiminin son duyuruları (halka arz, artırım, bölünme, temettü, fabrika).</summary>
+    void TabPodium()
+    {
+        GUILayout.Label("Borsa yönetimi önemli gelişmeleri gong çalarak duyurur. Yeni halka arzlar, sermaye artırımları, bölünmeler ve temettüler burada.", small);
+        Title("Son duyurular");
+        var p = Podium.I;
+        if (p == null || p.History.Count == 0) { GUILayout.Label("Henüz duyuru yok; birazdan gelir.", small); return; }
+        for (int i = 0; i < p.History.Count && i < 30; i++)
+        {
+            GUILayout.Label((i == 0 ? "<color=#FFD54A>" : "<color=#C9D1E0>") + p.History[i] + "</color>", label);
+            GUILayout.Space(2);
+        }
+    }
+
     void DrawTabName(string tab)
     {
+        if (tab == "Kürsü") { TabPodium(); return; }
         if (Market.I.Tm && DrawTm(tab)) return;
         switch (tab)
         {

@@ -8,6 +8,10 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public class BotTrader : MonoBehaviour
 {
+    public static readonly System.Collections.Generic.List<BotTrader> All = new System.Collections.Generic.List<BotTrader>();
+    void OnEnable() { All.Add(this); }
+    void OnDisable() { All.Remove(this); }
+
     public TextMesh bubble;
     public float walkSpeed = 1.5f;
     public float rushSpeed = 4.2f;
@@ -76,6 +80,7 @@ public class BotTrader : MonoBehaviour
 
     void Shout(string text, Color c, float seconds)
     {
+        if (seconds >= 3f && Ambience.I != null) Ambience.I.ShoutAt(transform.position + Vector3.up * 1.6f);
         if (!bubble) return;
         bubble.text = text;
         bubble.color = c;

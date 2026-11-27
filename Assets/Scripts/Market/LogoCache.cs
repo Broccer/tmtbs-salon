@@ -5,8 +5,9 @@ using UnityEngine;
 using UnityEngine.Networking;
 
 /// <summary>
-/// Marka logoları: sunucunun PNG uç noktasından (/tmtbs/logo/{id}) indirilir. Uç nokta yoksa
-/// (404) bir daha denenmez; bankolar baş harfli renkli rozet gösterir.
+/// Marka logoları: sunucunun PNG uç noktasından (/tmtbs/logo/{id}) indirilir. 404 yalnız o markanın logosu
+/// olmadığı anlamına gelir (bankosu baş harfli renkli rozet gösterir); diğer markalar yüklenmeye devam eder.
+/// Geçici ağ hatasında logo iki kez daha denenir.
 /// </summary>
 public class LogoCache : MonoBehaviour
 {
@@ -14,15 +15,17 @@ public class LogoCache : MonoBehaviour
 
     readonly Dictionary<long, Texture2D> cache = new Dictionary<long, Texture2D>();
     readonly Dictionary<long, List<Action<Texture2D>>> waiting = new Dictionary<long, List<Action<Texture2D>>>();
+    readonly Dictionary<long, int> tries = new Dictionary<long, int>();
     readonly Queue<long> queue = new Queue<long>();
-    bool endpointMissing;
     int running;
+    float nextRetry;
+    readonly List<long> retry = new List<long>();
 
     void Awake() { I = this; }
 
     public void Get(long id, Action<Texture2D> done)
     {
-        if (id <= 0 || endpointMissing) return;
+        if (id <= 0) return;
         if (cache.TryGetValue(id, out var t)) { if (t != null) done(t); return; }
         if (waiting.TryGetValue(id, out var list)) { list.Add(done); return; }
         waiting[id] = new List<Action<Texture2D>> { done };
@@ -31,7 +34,12 @@ public class LogoCache : MonoBehaviour
 
     void Update()
     {
-        while (running < 3 && queue.Count > 0 && !endpointMissing)
+        if (retry.Count > 0 && Time.time > nextRetry)
+        {
+            foreach (var id in retry) queue.Enqueue(id);
+            retry.Clear();
+        }
+        while (running < 4 && queue.Count > 0)
         {
             running++;
             StartCoroutine(Fetch(queue.Dequeue()));
@@ -42,20 +50,27 @@ public class LogoCache : MonoBehaviour
     {
         using (var req = UnityWebRequest.Get(Api.BaseUrl + "/tmtbs/logo/" + id))
         {
-            req.timeout = 15;
+            req.timeout = 20;
             yield return req.SendWebRequest();
             running--;
             Texture2D tex = null;
             if (req.result == UnityWebRequest.Result.Success && req.downloadHandler.data != null && req.downloadHandler.data.Length > 8)
             {
-                tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                tex = new Texture2D(2, 2, TextureFormat.RGBA32, true);
                 if (!tex.LoadImage(req.downloadHandler.data)) { Destroy(tex); tex = null; }
-                else { tex.wrapMode = TextureWrapMode.Clamp; tex.filterMode = FilterMode.Bilinear; }
+                else { tex.wrapMode = TextureWrapMode.Clamp; tex.filterMode = FilterMode.Trilinear; tex.anisoLevel = 4; }
             }
-            else if (req.responseCode == 404 || req.responseCode == 0)
+            else if (req.responseCode != 404)
             {
-                endpointMissing = true; // sunucuda henüz yok: rozetle devam
-                queue.Clear();
+                // ağ/sunucu hatası: en çok 2 kez daha dene (logosu olan marka rozetle kalmasın)
+                tries.TryGetValue(id, out int n);
+                if (n < 2)
+                {
+                    tries[id] = n + 1;
+                    retry.Add(id);
+                    nextRetry = Time.time + 4f + 4f * n;
+                    yield break;
+                }
             }
             cache[id] = tex;
             if (waiting.TryGetValue(id, out var list))

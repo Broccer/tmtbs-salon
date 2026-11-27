@@ -47,6 +47,7 @@ public partial class SalonDirector : MonoBehaviour
         try { email = PlayerPrefs.GetString(EmailKey, ""); } catch { }
         try { loginAcc = PlayerPrefs.GetString("mutesebbis_dunya_hesap", "tm") == "mt" ? Market.Account.Mutesebbis : Market.Account.Tmtbs; } catch { }
         SocialLogin.Received += OnSocial;
+        Podium.Announced += OnAnnounce;
         Market.I.Changed += OnMarket;
         Market.I.LoggedOut += OnLoggedOut;
         busy = true;
@@ -63,6 +64,7 @@ public partial class SalonDirector : MonoBehaviour
     void OnDestroy()
     {
         SocialLogin.Received -= OnSocial;
+        Podium.Announced -= OnAnnounce;
         if (Market.I == null) return;
         Market.I.Changed -= OnMarket;
         Market.I.LoggedOut -= OnLoggedOut;
@@ -78,6 +80,7 @@ public partial class SalonDirector : MonoBehaviour
         player.transform.localScale = Vector3.one;
         player.SetFrozen(false);
         phoneTab = 0;
+        LivePlayers.Active = true;
         bool tm = Market.I.Tm;
         loginAcc = Market.I.account;
         if (SalonBuilder.TmGate) SalonBuilder.TmGate.SetActive(tm);
@@ -98,10 +101,19 @@ public partial class SalonDirector : MonoBehaviour
         WakeUp();
     }
 
+    /// <summary>Kürsüden duyuru: salondaysa ekranın üstünde kısa bilgi.</summary>
+    void OnAnnounce(string text)
+    {
+        if (view != View.Game || panel != Panel.None) return;
+        if (player.transform.position.z <= -SalonBuilder.HalfD) return;
+        Hint("<color=#FFD54A>BORSA YÖNETİMİ</color> · " + text, 7f);
+    }
+
     void OnLoggedOut()
     {
         view = View.Login;
         panel = Panel.None;
+        LivePlayers.Active = false;
         chase.overview = true;
         chase.seated = false;
         InputReader.Blocked = true;
@@ -240,7 +252,8 @@ public partial class SalonDirector : MonoBehaviour
     void Styles()
     {
         if (h1 != null) return;
-        h1 = new GUIStyle(GUI.skin.label) { fontSize = 28, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, richText = true };
+        GUI.skin.font = Gfx.Font; // çok dilli Noto (Çince, Arapça, Hintçe… harfleri de çizer)
+        h1 =new GUIStyle(GUI.skin.label) { fontSize = 28, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, richText = true };
         h1.normal.textColor = new Color(1f, 0.82f, 0.35f);
         h2 = new GUIStyle(GUI.skin.label) { fontSize = 20, fontStyle = FontStyle.Bold, richText = true, wordWrap = true };
         h2.normal.textColor = Color.white;
@@ -250,30 +263,33 @@ public partial class SalonDirector : MonoBehaviour
         small = new GUIStyle(label) { fontSize = 13 };
         small.normal.textColor = new Color(0.7f, 0.74f, 0.82f);
         Theme();
-        box = new GUIStyle(GUI.skin.box) { padding = new RectOffset(14, 14, 10, 10), border = new RectOffset(20, 20, 20, 20) };
-        box.normal.background = RTex(64, 64, 16, new Color(0.09f, 0.11f, 0.17f, 0.97f), new Color(0.05f, 0.06f, 0.10f, 0.97f), new Color(1f, 0.82f, 0.35f, 0.45f), 1.5f);
+        box = new GUIStyle(GUI.skin.box) { padding = new RectOffset(14, 14, 10, 10), border = new RectOffset(22, 22, 22, 22) };
+        box.normal.background = RTex(64, 64, 18, new Color(0.11f, 0.13f, 0.20f, 0.96f), new Color(0.04f, 0.05f, 0.08f, 0.97f), new Color(1f, 0.82f, 0.35f, 0.38f), 1.2f, 0f, 0.05f);
+        glassTex = RTex(64, 64, 18, new Color(0.10f, 0.12f, 0.18f, 0.78f), new Color(0.05f, 0.06f, 0.09f, 0.82f), new Color(1, 1, 1, 0.14f), 1f, 0f, 0.06f);
+        pillTex = RTex(32, 32, 15, new Color(0.08f, 0.09f, 0.13f, 0.86f), new Color(0.05f, 0.06f, 0.09f, 0.86f), new Color(1f, 0.82f, 0.35f, 0.5f), 1f);
         btn = new GUIStyle(GUI.skin.button) { fontSize = 16, fontStyle = FontStyle.Bold, richText = true };
         field = new GUIStyle(GUI.skin.textField) { fontSize = 17, padding = new RectOffset(10, 10, 7, 7) };
         big = new GUIStyle(h1) { fontSize = 40 };
         big.normal.textColor = Color.white;
         tab = new GUIStyle(GUI.skin.button) { fontSize = 14, richText = true, margin = new RectOffset(2, 2, 2, 2) };
-        tab.normal.background = RTex(32, 32, 9, new Color(1, 1, 1, 0.07f), new Color(1, 1, 1, 0.04f), new Color(1, 1, 1, 0.12f), 1f);
-        tab.hover.background = RTex(32, 32, 9, new Color(1, 1, 1, 0.14f), new Color(1, 1, 1, 0.09f), new Color(1, 1, 1, 0.2f), 1f);
+        tab.normal.background = RTex(32, 32, 15, new Color(1, 1, 1, 0.06f), new Color(1, 1, 1, 0.03f), new Color(1, 1, 1, 0.10f), 1f);
+        tab.hover.background = RTex(32, 32, 15, new Color(1, 1, 1, 0.13f), new Color(1, 1, 1, 0.08f), new Color(1f, 0.85f, 0.45f, 0.35f), 1f);
         tab.active.background = tab.hover.background;
-        tab.normal.textColor = tab.hover.textColor = tab.active.textColor = new Color(0.78f, 0.82f, 0.9f);
+        tab.normal.textColor = tab.hover.textColor = tab.active.textColor = new Color(0.76f, 0.8f, 0.88f);
+        tab.hover.textColor = Color.white;
         tabOn = new GUIStyle(tab) { fontStyle = FontStyle.Bold };
         tabOn.normal.background = tabOn.hover.background = tabOn.active.background =
-            RTex(32, 32, 9, new Color(1f, 0.84f, 0.3f, 0.30f), new Color(1f, 0.7f, 0.2f, 0.22f), new Color(1f, 0.84f, 0.3f, 0.85f), 1.5f);
-        tabOn.normal.textColor = tabOn.hover.textColor = tabOn.active.textColor = new Color(1f, 0.88f, 0.45f);
+            RTex(32, 32, 15, new Color(1f, 0.86f, 0.42f, 0.98f), new Color(0.92f, 0.66f, 0.18f, 0.98f), new Color(1f, 0.95f, 0.75f, 0.9f), 1f, 0f, 0.18f);
+        tabOn.normal.textColor = tabOn.hover.textColor = tabOn.active.textColor = new Color(0.12f, 0.09f, 0.03f);
         shadowTex = RTex(64, 64, 22, new Color(0, 0, 0, 0.5f), new Color(0, 0, 0, 0.5f), new Color(0, 0, 0, 0), 0f, 10f);
     }
 
     /// <summary>Tuşların varsayılan rengi (renkli tuşlardan sonra buna dönülür).</summary>
-    public static readonly Color BtnBase = new Color(0.30f, 0.36f, 0.50f);
-    Texture2D shadowTex;
+    public static readonly Color BtnBase = new Color(0.26f, 0.33f, 0.50f);
+    Texture2D shadowTex, glassTex, pillTex;
 
     /// <summary>Yuvarlak köşeli, dikey geçişli, kenarlıklı doku (9 dilimli kullanılır). soft &gt; 0: yumuşak kenar (gölge).</summary>
-    static Texture2D RTex(int w, int h, float rad, Color top, Color bottom, Color border, float bw, float soft = 0f)
+    static Texture2D RTex(int w, int h, float rad, Color top, Color bottom, Color border, float bw, float soft = 0f, float gloss = 0f)
     {
         var t = new Texture2D(w, h, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear };
         var px = new Color[w * h];
@@ -283,7 +299,15 @@ public partial class SalonDirector : MonoBehaviour
                 float cx = Mathf.Clamp(x + 0.5f, rad, w - rad), cy = Mathf.Clamp(y + 0.5f, rad, h - rad);
                 float d = rad - Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(cx, cy)); // kenara uzaklık (içeride +)
                 float a = soft > 0 ? Mathf.Clamp01(d / soft) : Mathf.Clamp01(d + 0.5f);
-                Color c = Color.Lerp(bottom, top, y / (float)(h - 1));
+                float v = y / (float)(h - 1);
+                Color c = Color.Lerp(bottom, top, v);
+                // cam parıltısı: üst bölümde yumuşak beyaz bant + en üstte ince ışık çizgisi
+                if (gloss > 0)
+                {
+                    float g = Mathf.SmoothStep(0.52f, 1f, v) * gloss;
+                    c = new Color(Mathf.Lerp(c.r, 1, g), Mathf.Lerp(c.g, 1, g), Mathf.Lerp(c.b, 1, g), Mathf.Max(c.a, g * 0.6f));
+                    if (d > 0.5f && d < bw + 2.2f && y > h * 0.5f) c = Color.Lerp(c, new Color(1, 1, 1, c.a), 0.18f * gloss * 4f);
+                }
                 if (bw > 0) c = Color.Lerp(c, new Color(border.r, border.g, border.b, Mathf.Max(c.a, border.a)), Mathf.Clamp01(bw + 0.5f - d) * border.a);
                 c.a *= a;
                 px[y * w + x] = c;
@@ -298,12 +322,13 @@ public partial class SalonDirector : MonoBehaviour
     {
         var s = GUI.skin;
         var b = s.button;
-        b.normal.background = RTex(32, 32, 9, new Color(1, 1, 1), new Color(0.82f, 0.84f, 0.88f), new Color(1, 1, 1, 0.5f), 1f);
-        b.hover.background = RTex(32, 32, 9, new Color(1, 1, 1), new Color(0.92f, 0.93f, 0.96f), new Color(1, 1, 1, 0.9f), 1.2f);
-        b.active.background = RTex(32, 32, 9, new Color(0.78f, 0.8f, 0.85f), new Color(0.9f, 0.9f, 0.94f), new Color(1, 1, 1, 0.5f), 1f);
+        // Beyaz tabanlı (GUI.backgroundColor ile renklenir) cam parıltılı düğmeler
+        b.normal.background = RTex(32, 40, 11, new Color(0.96f, 0.97f, 1f), new Color(0.70f, 0.73f, 0.80f), new Color(1, 1, 1, 0.45f), 1f, 0f, 0.16f);
+        b.hover.background = RTex(32, 40, 11, new Color(1f, 1f, 1f), new Color(0.84f, 0.86f, 0.92f), new Color(1f, 0.93f, 0.7f, 0.95f), 1.3f, 0f, 0.22f);
+        b.active.background = RTex(32, 40, 11, new Color(0.66f, 0.69f, 0.76f), new Color(0.86f, 0.88f, 0.93f), new Color(1, 1, 1, 0.5f), 1f);
         b.focused.background = b.normal.background;
         b.onNormal.background = b.onHover.background = b.onActive.background = b.active.background;
-        b.border = new RectOffset(10, 10, 10, 10);
+        b.border = new RectOffset(12, 12, 13, 13);
         b.normal.textColor = b.hover.textColor = b.active.textColor = b.focused.textColor = Color.white;
         b.fontSize = Mathf.Max(b.fontSize, 14);
         b.richText = true;
@@ -349,7 +374,16 @@ public partial class SalonDirector : MonoBehaviour
         DemoBadge();
 
         if (!string.IsNullOrEmpty(banner) && Time.time < bannerUntil)
+        {
+            // gölgeli büyük başlık, son yarım saniyede söner
+            float a = Mathf.Clamp01((bannerUntil - Time.time) / 0.5f);
+            Color o = GUI.color;
+            GUI.color = new Color(0, 0, 0, 0.55f * a);
+            GUI.Label(new Rect(2, H * 0.2f + 3, W, 60), banner, big);
+            GUI.color = new Color(1, 1, 1, a);
             GUI.Label(new Rect(0, H * 0.2f, W, 60), banner, big);
+            GUI.color = o;
+        }
     }
 
     void Dim(float a)
@@ -367,11 +401,26 @@ public partial class SalonDirector : MonoBehaviour
     {
         DrawShadow(r);
         PanelBox(r);
-        // Üst kenarda ince altın vurgu
-        Color oc = GUI.color;
-        GUI.color = new Color(1f, 0.82f, 0.35f, 0.75f);
-        GUI.DrawTexture(new Rect(r.x + 18, r.y + 1, r.width - 36, 2), Texture2D.whiteTexture);
-        GUI.color = oc;
+        // Üst kenarda ortadan yanlara sönen altın vurgu + başlık bölgesinde sıcak parıltı
+        if (Event.current.type == EventType.Repaint)
+        {
+            Color oc = GUI.color;
+            int seg = 24;
+            float lw = r.width - 36;
+            for (int i = 0; i < seg; i++)
+            {
+                float u = Mathf.Abs((i + 0.5f) / seg * 2f - 1f);
+                GUI.color = new Color(1f, 0.84f, 0.4f, 0.9f * (1f - u * u));
+                GUI.DrawTexture(new Rect(r.x + 18 + i * lw / seg, r.y + 1, lw / seg + 0.5f, 2f), Texture2D.whiteTexture);
+            }
+            for (int i = 0; i < 10; i++)
+            {
+                GUI.color = new Color(1f, 0.75f, 0.3f, 0.035f * (1f - i / 10f));
+                GUI.DrawTexture(new Rect(r.x + 6, r.y + 3 + i * 5, r.width - 12, 5), Texture2D.whiteTexture);
+            }
+            GUI.color = oc;
+        }
+        rowStripe = false;
         var e = Event.current;
         if (e.type == EventType.MouseDrag && r.Contains(e.mousePosition) && HtmlInput.Touch)
         {
@@ -449,20 +498,50 @@ public partial class SalonDirector : MonoBehaviour
 
     GUIStyle smallNw;
 
+    bool rowStripe;
+
     void Row(string k, string v)
     {
-        if (smallNw == null) smallNw = new GUIStyle(small) { wordWrap = false };
+        if (smallNw == null) smallNw = new GUIStyle(small) { wordWrap = false, padding = new RectOffset(8, 4, 3, 3) };
         GUILayout.BeginHorizontal();
         GUILayout.Label(k, smallNw);
         GUILayout.FlexibleSpace();
         GUILayout.Label(v, right);
+        GUILayout.Space(6);
         GUILayout.EndHorizontal();
+        // okunurluk için çizgili satırlar
+        rowStripe = !rowStripe;
+        if (rowStripe && Event.current.type == EventType.Repaint)
+        {
+            var r = GUILayoutUtility.GetLastRect();
+            Color o = GUI.color;
+            GUI.color = new Color(1, 1, 1, 0.035f);
+            GUI.DrawTexture(r, Texture2D.whiteTexture);
+            GUI.color = o;
+        }
     }
+
+    GUIStyle titleSt;
 
     void Title(string t)
     {
-        GUILayout.Space(8);
-        GUILayout.Label("<color=#FFD54A><b>" + t + "</b></color>", label);
+        if (titleSt == null) titleSt = new GUIStyle(label) { fontSize = 15, fontStyle = FontStyle.Bold };
+        GUILayout.Space(10);
+        GUILayout.Label("<color=#FFD54A>" + t.ToUpper(new System.Globalization.CultureInfo("tr-TR")) + "</color>", titleSt);
+        // başlığın altında soldan sağa sönen altın çizgi
+        var r = GUILayoutUtility.GetLastRect();
+        if (Event.current.type == EventType.Repaint)
+        {
+            Color o = GUI.color;
+            for (int i = 0; i < 12; i++)
+            {
+                GUI.color = new Color(1f, 0.82f, 0.35f, 0.55f * (1f - i / 12f));
+                GUI.DrawTexture(new Rect(r.x + i * r.width / 12f, r.yMax, r.width / 12f + 1, 1.2f), Texture2D.whiteTexture);
+            }
+            GUI.color = o;
+        }
+        GUILayout.Space(4);
+        rowStripe = false;
     }
 
     void Msg(string m, bool ok)
@@ -783,6 +862,56 @@ public partial class SalonDirector : MonoBehaviour
 
     // ================================================================ oyun içi üst bilgi
 
+    GUIStyle hintSt, hudName, hudKey, hudVal, avatarSt, pillSt;
+    Texture2D avatarTex;
+
+    /// <summary>Sol üstte oyuncu kartı (baş harf rozeti, CANLI/DEMO, nakit, net, yer, çevrimiçi sayısı); sağ üstte menü.</summary>
+    void DrawHud(Market m, bool narrow)
+    {
+        if (hudName == null)
+        {
+            hudName = new GUIStyle(label) { fontSize = 17, fontStyle = FontStyle.Bold, wordWrap = false, clipping = TextClipping.Clip };
+            hudKey = new GUIStyle(small) { fontSize = 11, wordWrap = false };
+            hudKey.normal.textColor = new Color(0.62f, 0.67f, 0.76f);
+            hudVal = new GUIStyle(label) { fontSize = 15, fontStyle = FontStyle.Bold, wordWrap = false };
+            avatarTex = RTex(48, 48, 24, new Color(1f, 0.86f, 0.42f), new Color(0.85f, 0.58f, 0.15f), new Color(1, 1, 1, 0.7f), 1.5f, 0f, 0.2f);
+            avatarSt = new GUIStyle(label) { fontSize = 18, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+            avatarSt.normal.textColor = new Color(0.15f, 0.1f, 0.03f);
+            pillSt = new GUIStyle(small) { fontSize = 10, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, border = new RectOffset(9, 9, 9, 9) };
+        }
+        float bw = Mathf.Min(320, W * 0.62f);
+        var card = new Rect(8, 8, bw, 98);
+        DrawShadow(card);
+        Color ob = GUI.backgroundColor;
+        GUI.backgroundColor = Color.white;
+        var gs = new GUIStyle { border = new RectOffset(22, 22, 22, 22) };
+        gs.normal.background = glassTex;
+        GUI.Box(card, GUIContent.none, gs);
+        // baş harf rozeti
+        GUI.DrawTexture(new Rect(18, 18, 40, 40), avatarTex);
+        string ini = string.IsNullOrEmpty(m.userName) ? "?" : m.userName.Substring(0, 1).ToUpper(new System.Globalization.CultureInfo("tr-TR"));
+        GUI.Label(new Rect(18, 18, 40, 40), ini, avatarSt);
+        GUI.Label(new Rect(66, 14, bw - 130, 24), Cut(m.userName, 20), hudName);
+        bool demo = m.mode == Market.Mode.Demo;
+        var pr = new Rect(bw - 62, 17, 56, 18);
+        pillSt.normal.background = demo ? demoTex ?? pillTex : liveTex ?? (liveTex = RTex(32, 32, 9, new Color(0.2f, 0.75f, 0.42f, 0.95f), new Color(0.1f, 0.55f, 0.3f, 0.95f), new Color(1, 1, 1, 0.45f), 1f));
+        pillSt.normal.textColor = Color.white;
+        GUI.Label(pr, demo ? "DEMO" : "CANLI", pillSt);
+        GUI.Label(new Rect(66, 38, bw - 80, 18), Place() + (LivePlayers.OnlineCount > 0 ? $"  ·  <color=#7CC8FF>{LivePlayers.OnlineCount} oyuncu burada</color>" : ""), hudKey);
+        float cw = (bw - 28) / 2f;
+        GUI.Label(new Rect(18, 62, cw, 14), "NAKİT", hudKey);
+        GUI.Label(new Rect(18, 75, cw, 22), Fmt.Mls(m.cash), hudVal);
+        GUI.Label(new Rect(18 + cw, 62, cw, 14), "NET DEĞER", hudKey);
+        GUI.Label(new Rect(18 + cw, 75, cw, 22), $"<color=#FFD54A>{Fmt.Mls(m.net)}</color>", hudVal);
+        GUI.backgroundColor = ob;
+
+        float mw = narrow ? 96 : 150;
+        if (GUI.Button(new Rect(W - mw - 8, 8, mw, 44), narrow ? "Menü" : "Menü  (M)", btn)) OpenPhone(false);
+        if (!narrow) GUI.Label(new Rect(W - 330, 56, 322, 22), m.status, new GUIStyle(small) { alignment = TextAnchor.UpperRight });
+    }
+
+    Texture2D liveTex;
+
     void DrawGame()
     {
         var m = Market.I;
@@ -791,15 +920,7 @@ public partial class SalonDirector : MonoBehaviour
 
         if (!hudHidden)
         {
-            float bw = Mathf.Min(300, W * 0.58f);
-            PanelBox(new Rect(8, 8, bw, 92));
-            GUI.Label(new Rect(20, 12, bw - 20, 26), $"<b>{Cut(m.userName, 22)}</b>  <size=12>{(m.mode == Market.Mode.Demo ? "<color=#FFB74D>DEMO</color>" : "<color=#5BE38A>CANLI</color>")}</size>", h2);
-            GUI.Label(new Rect(20, 40, bw - 20, 22), $"Nakit <b>{Fmt.Mls(m.cash)}</b>", label);
-            GUI.Label(new Rect(20, 62, bw - 20, 22), $"Net <b><color=#FFD54A>{Fmt.Mls(m.net)}</color></b> · <size=12>{Place()}</size>", label);
-
-            float mw = narrow ? 96 : 150;
-            if (GUI.Button(new Rect(W - mw - 8, 8, mw, 44), narrow ? "☰ Menü" : "☰ Menü  (M)", btn)) OpenPhone(false);
-            if (!narrow) GUI.Label(new Rect(W - 330, 56, 322, 22), m.status, new GUIStyle(small) { alignment = TextAnchor.UpperRight });
+            DrawHud(m, narrow);
         }
 
         if (panel == Panel.None)
@@ -816,8 +937,15 @@ public partial class SalonDirector : MonoBehaviour
             }
             if (!string.IsNullOrEmpty(hint) && Time.time < hintUntil)
             {
-                float hw = Mathf.Min(520, W - 16);
-                GUI.Label(new Rect((W - hw) / 2, 108, hw, 50), $"<b>{hint}</b>", new GUIStyle(label) { alignment = TextAnchor.UpperCenter });
+                if (hintSt == null) hintSt = new GUIStyle(label) { alignment = TextAnchor.MiddleCenter, padding = new RectOffset(18, 18, 8, 8), border = new RectOffset(15, 15, 15, 15) };
+                hintSt.normal.background = pillTex;
+                float hw = Mathf.Min(560, W - 16);
+                var gc = new GUIContent($"<b>{hint}</b>");
+                float hh = Mathf.Max(40, hintSt.CalcHeight(gc, hw));
+                Color ob = GUI.backgroundColor;
+                GUI.backgroundColor = Color.white;
+                GUI.Label(new Rect((W - hw) / 2, 108, hw, hh), gc, hintSt);
+                GUI.backgroundColor = ob;
             }
             if (!HtmlInput.Touch)
                 GUI.Label(new Rect(14, H - 30, W - 28, 26),

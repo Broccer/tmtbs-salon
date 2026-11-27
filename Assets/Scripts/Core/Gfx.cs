@@ -15,7 +15,9 @@ public static class Gfx
         {
             if (font == null)
             {
-                font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                // Çok dilli Noto yazı tipi (CI'da tools/fonts/build_font.py üretir); yoksa Unity'nin yerleşiği.
+                font = Resources.Load<Font>("Fonts/TmtbsSans");
+                if (font == null) font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                 // Yerleşik yazı shader'ı her şeyin önünde çizer; derinlik denemeli olanı kullan.
                 var sh = Resources.Load<Shader>("Tmtbs_Text3D");
                 if (sh != null && font != null) font.material.shader = sh;

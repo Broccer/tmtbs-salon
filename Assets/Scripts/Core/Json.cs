@@ -209,6 +209,7 @@ public static class J
     public static string S(object o, string key = null)
     {
         if (key != null) o = Get(o, key);
-        return o == null ? "" : o is double d ? d.ToString(CultureInfo.InvariantCulture) : o.ToString();
+        // Sunucudan gelen yazılar (marka/oyuncu adı, haber): Arapça varsa harfleri birleşik biçime çevir, sağdan sola diz.
+        return o == null ? "" : o is double d ? d.ToString(CultureInfo.InvariantCulture) : TextFix.Display(o.ToString());
     }
 }

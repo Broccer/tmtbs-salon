@@ -31,6 +31,18 @@ jobs:
           key: Library-WebGL-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
           restore-keys: Library-WebGL-
 
+      # Çok dilli yazı tipi (Çince/Japonca/Korece/Arapça/Hintçe/Bengalce): Google Fonts'tan (OFL) alınıp
+      # tek TTF'de birleşir. Adım başarısız olursa oyun Unity'nin yerleşik yazı tipine döner.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Yazı tipini hazırla
+        continue-on-error: true
+        run: |
+          pip install fonttools==4.55.3 brotli
+          mkdir -p Assets/Resources/Fonts
+          python tools/fonts/build_font.py Assets/Resources/Fonts/TmtbsSans.ttf
+
       - name: Unity WebGL derle
         uses: game-ci/unity-builder@v4
         env:
@@ -41,6 +53,7 @@ jobs:
           targetPlatform: WebGL
           buildMethod: WebGLBuild.Build
           buildsPath: build
+          allowDirtyBuild: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
