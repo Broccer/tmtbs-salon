@@ -50,6 +50,7 @@ public partial class SalonDirector : MonoBehaviour
         Podium.Announced += OnAnnounce;
         Market.I.Changed += OnMarket;
         Market.I.LoggedOut += OnLoggedOut;
+        Market.I.CreditArrived += OnCreditArrived;
         busy = true;
         formMsg = "Oturum kontrol ediliyor…";
         Market.I.TryResume(ok =>
@@ -68,6 +69,7 @@ public partial class SalonDirector : MonoBehaviour
         if (Market.I == null) return;
         Market.I.Changed -= OnMarket;
         Market.I.LoggedOut -= OnLoggedOut;
+        Market.I.CreditArrived -= OnCreditArrived;
     }
 
     void EnterGame()
@@ -422,6 +424,8 @@ public partial class SalonDirector : MonoBehaviour
         }
         rowStripe = false;
         var e = Event.current;
+        if (e.type == EventType.MouseDown) panelDrag = 0;
+        if (e.type == EventType.MouseDrag) panelDrag += e.delta.magnitude;
         if (e.type == EventType.MouseDrag && r.Contains(e.mousePosition) && HtmlInput.Touch)
         {
             scroll.y -= e.delta.y;
@@ -896,17 +900,24 @@ public partial class SalonDirector : MonoBehaviour
         var pr = new Rect(bw - 62, 17, 56, 18);
         pillSt.normal.background = demo ? demoTex ?? pillTex : liveTex ?? (liveTex = RTex(32, 32, 9, new Color(0.2f, 0.75f, 0.42f, 0.95f), new Color(0.1f, 0.55f, 0.3f, 0.95f), new Color(1, 1, 1, 0.45f), 1f));
         pillSt.normal.textColor = Color.white;
-        GUI.Label(pr, demo ? "DEMO" : "CANLI", pillSt);
-        GUI.Label(new Rect(66, 42, bw - 80, 18), Place() + (LivePlayers.OnlineCount > 0 ? $"  ·  <color=#7CC8FF>{LivePlayers.OnlineCount} oyuncu burada</color>" : ""), hudKey);
+        GUI.Label(pr, demo ? T("DEMO") : T("CANLI"), pillSt);
+        GUI.Label(new Rect(66, 42, bw - 80, 18), Place() + (LivePlayers.OnlineCount > 0 ? $"  ·  <color=#7CC8FF>{T("{0} oyuncu burada", LivePlayers.OnlineCount)}</color>" : ""), hudKey);
         float cw = (bw - 28) / 2f;
-        GUI.Label(new Rect(18, 68, cw, 16), "NAKİT", hudKey);
+        GUI.Label(new Rect(18, 68, cw, 16), T("NAKİT"), hudKey);
         GUI.Label(new Rect(18, 84, cw, 26), Fmt.Mls(m.cash), hudVal);
-        GUI.Label(new Rect(18 + cw, 68, cw, 16), "NET DEĞER", hudKey);
+        GUI.Label(new Rect(18 + cw, 68, cw, 16), T("NET DEĞER"), hudKey);
         GUI.Label(new Rect(18 + cw, 84, cw, 26), $"<color=#FFD54A>{Fmt.Mls(m.net)}</color>", hudVal);
         GUI.backgroundColor = ob;
+        // karta dokun: salondaki oyuncular (Trade of MTBS) / cep menüsü
+        if (panel == Panel.None && Event.current.type == EventType.MouseUp && card.Contains(Event.current.mousePosition))
+        {
+            Event.current.Use();
+            OpenPhone(false);
+            if (m.Tm) SwitchTab("Git");
+        }
 
         float mw = narrow ? 96 : 150;
-        if (GUI.Button(new Rect(W - mw - 8, 8, mw, 44), narrow ? "Menü" : "Menü  (M)", btn)) OpenPhone(false);
+        if (GUI.Button(new Rect(W - mw - 8, 8, mw, 44), narrow ? T("Menü") : T("Menü") + "  (M)", btn)) OpenPhone(false);
         if (!narrow) GUI.Label(new Rect(W - 330, 56, 322, 22), m.status, new GUIStyle(small) { alignment = TextAnchor.UpperRight });
     }
 

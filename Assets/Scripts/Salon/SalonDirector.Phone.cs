@@ -25,6 +25,10 @@ public partial class SalonDirector
         OpenPanelCommon(Panel.Phone);
         placeTab = null;
         atComputer = computer;
+        profileId = 0;
+        duelSel = 0;
+        confirmDelete = false;
+        portfolioMarked = false;
         phoneMsg = null;
         pdata.Clear();
         perr.Clear();
@@ -70,7 +74,7 @@ public partial class SalonDirector
         {
             GUILayout.BeginHorizontal();
             for (int j = i; j < i + perRow && j < PhoneTabs.Length; j++)
-                if (TabBtn(PhoneTabs[j], j == phoneTab, 34, (iw - 6 * perRow) / perRow))
+                if (TabBtn(T(PhoneTabs[j]), j == phoneTab, 34, (iw - 6 * perRow) / perRow))
                 {
                     phoneTab = j;
                     phoneMsg = null;

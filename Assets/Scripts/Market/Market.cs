@@ -61,6 +61,8 @@ public class Market : MonoBehaviour
     public string status = "";
     public event Action Changed;
     public event Action LoggedOut;
+    /// <summary>Kredinin yeni dilimi hesaba yattı (sunucu durumunda yeni_kredi).</summary>
+    public event Action<double> CreditArrived;
 
     public float refreshSeconds = 12f;
     bool refreshing;
@@ -304,6 +306,7 @@ public class Market : MonoBehaviour
         if (!string.IsNullOrEmpty(n)) userName = n;
         if (J.L(u, "id") > 0) userId = J.L(u, "id");
         credit = J.O(d, "kredi");
+        if (J.B(d, "yeni_kredi") && J.D(credit, "dilim") > 0) CreditArrived?.Invoke(J.D(credit, "dilim"));
         ApplyBorsa(d);
         stockValue = J.D(d, "hisse_degeri");
         net = J.D(d, "net_deger");

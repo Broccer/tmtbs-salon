@@ -91,7 +91,7 @@ public partial class SalonDirector
         if (tradeTab == 0) DrawOrderForm(s, sellable, iw);
         else if (tradeTab == 1) DrawBook(s, iw);
         else if (tradeTab == 2) DrawChart(iw);
-        else DrawInfo(s);
+        else if (Market.I.Tm) DrawInfoPlus(s); else DrawInfo(s);
         if (Market.I.Tm) TradeRulesNote(s);
 
         GUILayout.Space(10);

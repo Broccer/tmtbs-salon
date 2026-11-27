@@ -25,6 +25,20 @@ public class LivePlayers : MonoBehaviour
         public float lastSeen;
         public int poz;
         public CharAnim ca;
+        public string name = "";
+        public long uid;
+    }
+
+    public struct Info { public string name; public long uid; public Vector3 pos; }
+
+    /// <summary>Salondaki diğer oyuncular (yakından uzağa).</summary>
+    public static List<Info> Others(Vector3 from)
+    {
+        var l = new List<Info>();
+        if (I == null) return l;
+        foreach (var r in I.remotes.Values) l.Add(new Info { name = r.name, uid = r.uid, pos = r.go.transform.position });
+        l.Sort((a, b) => (a.pos - from).sqrMagnitude.CompareTo((b.pos - from).sqrMagnitude));
+        return l;
     }
 
     readonly Dictionary<string, Remote> remotes = new Dictionary<string, Remote>();
@@ -123,6 +137,8 @@ public class LivePlayers : MonoBehaviour
                 if (r.tag != null && r.tag.text != ad) r.tag.text = ad;
             }
             r.poz = (int)J.D(o, "poz");
+            r.name = J.S(o, "ad");
+            r.uid = J.L(o, "uid");
             r.lastSeen = now;
         }
         var gone = new List<string>();

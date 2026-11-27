@@ -6,58 +6,14 @@ public partial class SalonDirector
 {
     // ---------------------------------------------------------------- Sıralama
 
-    void TmRank()
-    {
-        if (!NeedLive()) return;
-        GUILayout.BeginHorizontal();
-        foreach (var (k, n) in new[] { ("gun", "Gün"), ("hafta", "Hafta"), ("ay", "Ay"), ("yil", "Yıl") })
-            if (TabBtn(n, k == rankPeriod, 32))
-            {
-                rankPeriod = k;
-                pdata.Remove("sira");
-                Fetch("sira", RankPath());
-            }
-        GUILayout.EndHorizontal();
-        RankTierPicker();
-        if (!Data("sira", out var d)) return;
-        var ben = J.Get(d, "ben");
-        if (ben is Dictionary<string, object> bd && bd.Count > 0)
-            Row("Senin sıran", $"<b>{Fmt.N(J.D(bd, "sira"))}.</b> · kazanç {Fmt.N(J.D(bd, "kazanc"))}");
-        foreach (var o in J.A(d, "liste"))
-        {
-            bool me = J.B(o, "ben");
-            string line = $"{Fmt.N(J.D(o, "sira"))}. {J.S(o, "ad")}";
-            Row(me ? $"<color=#FFD54A><b>{line}</b></color>" : line,
-                $"<color={Fmt.ChangeColor(J.D(o, "kazanc"))}>{Fmt.N(J.D(o, "kazanc"))}</color>  <size=12>net {Fmt.Short(J.D(o, "net"))}</size>");
-        }
-    }
-
-    // ---------------------------------------------------------------- Görevler (yol haritası)
-
-    void TmRoad()
-    {
-        if (!NeedLive()) return;
-        if (!Data("yol", out var d)) return;
-        var y = J.O(d, "yol");
-        Row("Tamamlanan", $"{Fmt.N(J.D(y, "tamam_sayisi"))} / {Fmt.N(J.D(y, "toplam_gorev"))}");
-        Row("Kazanılan ödül", $"{Fmt.Mls(J.D(y, "kazanilan"))} / {Fmt.Mls(J.D(y, "toplam_odul"))}");
-        var next = J.Get(y, "sonraki");
-        if (next is Dictionary<string, object> nd && nd.Count > 0) Row("Sıradaki", Pretty(J.S(nd, "key")));
-        else if (next is string ns && ns != "") Row("Sıradaki", Pretty(ns));
-        foreach (var g in J.A(y, "gorevler"))
-        {
-            bool done = J.B(g, "tamam");
-            string mark = done ? "<color=#5BE38A>✓</color>" : "○";
-            string yeni = J.B(g, "yeni") ? " <color=#FFD54A>yeni</color>" : "";
-            Row($"{mark} {Pretty(J.S(g, "key"))}{yeni}", Fmt.Mls(J.D(g, "odul")));
-        }
-    }
+    // Sıralama ve görevler: SalonDirector.TmPlus.cs (TmRankPlus, TmRoadPlus)
 
     // ---------------------------------------------------------------- Düello
 
     void TmDuel()
     {
         if (!NeedLive()) return;
+        DuelDetail();
         if (!Data("duello", out var d)) return;
         double fee = J.D(d, "ucret");
         GUILayout.Label($"İki oyuncu aynı başlangıç parasıyla bir süre işlem yapar; daha çok kazanan ödülü alır. Katılım ücreti {Fmt.Mls(fee)}. Düello hesabıyla işlem için bankodaki panelde hesabı seç.", small);
@@ -80,6 +36,13 @@ public partial class SalonDirector
                 DuelPost("/tmtbs/duello/" + id + "/katil", null, "Düelloya katıldın.");
             if (durum == "bekliyor" && GUILayout.Button("Vazgeç", GUILayout.Width(76), GUILayout.Height(30)))
                 DuelPost("/tmtbs/duello/" + id + "/vazgec", null, "Düellodan vazgeçildi.");
+            if (GUILayout.Button("Ayrıntı", GUILayout.Width(80), GUILayout.Height(30)))
+            {
+                duelSel = id;
+                pdata.Remove("duello" + id);
+                Fetch("duello" + id, "/tmtbs/duello/" + id);
+                scroll = Vector2.zero;
+            }
             GUILayout.EndHorizontal();
         }
 
@@ -255,8 +218,8 @@ public partial class SalonDirector
                 Fetch("yol", "/tmtbs/yol");
                 if (m.Live) m.Post("/tmtbs/yol/goruldu", null, (r, e) => { });
                 return true;
-            case "Düello": Fetch("duello", "/tmtbs/duello"); return true;
-            case "Profil": Fetch("profil", "/tmtbs/profil/ben"); return true;
+            case "Düello": Fetch("duello", "/tmtbs/duello"); if (duelSel > 0) Fetch("duello" + duelSel, "/tmtbs/duello/" + duelSel); return true;
+            case "Profil": if (m.Live) Fetch(ProfileKey(), ProfilePath()); return true;
             case "Kademe": case "Portföy": case "Haklar": m.RefreshStatus(); return true;
             case "Git": case "Piyasa": return true;
         }
@@ -267,8 +230,13 @@ public partial class SalonDirector
     {
         switch (tab)
         {
-            case "Sıralama": TmRank(); return true;
-            case "Görevler": TmRoad(); return true;
+            case "Ana": TmHome(); return true;
+            case "Piyasa": TmMarket(); return true;
+            case "Portföy": TmPortfolio(); return true;
+            case "Haberler": TmNews(); return true;
+            case "Profil": TmProfile(); return true;
+            case "Sıralama": TmRankPlus(); return true;
+            case "Görevler": TmRoadPlus(); return true;
             case "Düello": TmDuel(); return true;
             case "Kademe": TmTiers(); return true;
             case "Git": TmTravel(); return true;
@@ -349,7 +317,7 @@ public partial class SalonDirector
         for (int i = 0; i < Tiers.Length; i++)
         {
             string ad = $"Sv. {i + 1} · {Tiers[i].ad}";
-            Row(i + 1 == k ? $"<color=#FFD54A><b>{ad} Â· sen</b></color>" : ad, Fmt.Mls(Tiers[i].esik) + "+");
+            Row(i + 1 == k ? $"<color=#FFD54A><b>{ad} · {T("sen")}</b></color>" : ad, Fmt.Mls(Tiers[i].esik) + "+");
         }
         GUILayout.Label("Sıralamada her oyuncu kendi kademesindeki oyuncularla yarışır; net değerin eşiği geçince bir üst kademeye çıkarsın.", small);
 
@@ -402,6 +370,33 @@ public partial class SalonDirector
         if (GUILayout.Button("Düello salonu", btn, GUILayout.Height(42))) { GoTo(SalonBuilder.DuelSpot, Quaternion.LookRotation(Vector3.back)); Show("Düello salonu", 1.5f); }
         if (GUILayout.Button("Salon kapısı · şehre çıkış", btn, GUILayout.Height(42))) { GoTo(new Vector3(0, 0, -SalonBuilder.HalfD + 4.5f), Quaternion.LookRotation(Vector3.back)); gateAgain = Time.time + 1f; }
         GUILayout.Label("Trade of MTBS hesabıyla yalnız borsa salonundasın. Şehre çıkmak, ev, iş ve dükkânlar için Müteşebbis hesabıyla gir.", small);
+        SalonPlayers();
+    }
+
+    /// <summary>Salondaki gerçek oyuncular: yanına git ya da profilini aç (düelloya davet profilden).</summary>
+    void SalonPlayers()
+    {
+        var others = LivePlayers.Others(player != null ? player.transform.position : Vector3.zero);
+        Title(T("Salondaki oyuncular") + $" ({others.Count})");
+        if (others.Count == 0) { GUILayout.Label(T("Şu an salonda senden başka oyuncu yok."), small); return; }
+        foreach (var o in others)
+        {
+            GUILayout.BeginHorizontal();
+            LogoIcon(-2, o.name, 30);
+            float dist = player != null ? Vector3.Distance(player.transform.position, o.pos) : 0;
+            GUILayout.Label($"<b><color=#7CC8FF>{o.name}</color></b>\n<size=11>{T("{0} m uzakta", Mathf.RoundToInt(dist))}</size>", small);
+            GUILayout.FlexibleSpace();
+            if (GUILayout.Button(T("Yanına git"), GUILayout.Width(100), GUILayout.Height(32)))
+            {
+                var dir = player != null ? (player.transform.position - o.pos).Flat() : Vector3.back;
+                if (dir.sqrMagnitude < 0.01f) dir = Vector3.back;
+                var spot = o.pos + dir.normalized * 1.6f;
+                GoTo(spot, Quaternion.LookRotation(-dir.normalized));
+            }
+            if (o.uid > 0 && Market.I.Live && GUILayout.Button(T("Profil"), GUILayout.Width(80), GUILayout.Height(32)))
+                OpenProfile(o.uid, "Git");
+            GUILayout.EndHorizontal();
+        }
     }
 
     // ---------------------------------------------------------------- Kapı: Müteşebbis'e yönlendirme
