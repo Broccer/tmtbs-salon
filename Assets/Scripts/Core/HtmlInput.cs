@@ -50,7 +50,7 @@ public class HtmlInput : MonoBehaviour
         {
             return password ? GUILayout.PasswordField(value ?? "", '•', max, style, opts) : GUILayout.TextField(value ?? "", max, style, opts);
         }
-        string shown = string.IsNullOrEmpty(value) ? "<color=#7d879c>dokun ve yaz…</color>" : (password ? new string('•', value.Length) : value);
+        string shown = string.IsNullOrEmpty(value) ? "<color=#7d879c>" + Loc.T("dokun ve yaz…") + "</color>" : (password ? new string('•', value.Length) : value);
         var st = new GUIStyle(style) { richText = true };
         if (GUILayout.Button(shown, st, opts)) Open(id, value ?? "", title, password, numeric);
         return value;

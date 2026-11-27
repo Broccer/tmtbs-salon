@@ -58,12 +58,19 @@ public partial class SalonDirector
         return false;
     }
 
+    GUIStyle phoneTitle;
+    GUIStyle PhoneTitleStyle()
+    {
+        if (phoneTitle == null || phoneTitle.fontSize != h2.fontSize) phoneTitle = new GUIStyle(h2) { wordWrap = true };
+        return phoneTitle;
+    }
+
     void DrawPhone()
     {
         var r = PanelRect(520);
         float iw = BeginPanel(r);
         GUILayout.BeginHorizontal();
-        GUILayout.Label(placeTab != null ? "<b>" + placeTitle + "</b>" : atComputer ? T("<b>Ev bilgisayarı</b>") : (Market.I.Tm ? T("<b>Telefon · Trade of MTBS</b>") : T("<b>Telefon · Müteşebbis</b>")), h2);
+        GUILayout.Label(placeTab != null ? "<b>" + placeTitle + "</b>" : atComputer ? T("<b>Ev bilgisayarı</b>") : (Market.I.Tm ? T("<b>Telefon · Trade of MTBS</b>") : T("<b>Telefon · Müteşebbis</b>")), PhoneTitleStyle(), GUILayout.MaxWidth(iw - 56));
         GUILayout.FlexibleSpace();
         if (GUILayout.Button("×", btn, GUILayout.Width(44), GUILayout.Height(36))) { EndPanel(); ClosePanel(); return; }
         GUILayout.EndHorizontal();

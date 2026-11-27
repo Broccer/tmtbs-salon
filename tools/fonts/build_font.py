@@ -26,6 +26,7 @@ FONTS = {
     "arabic": "notosansarabic/NotoSansArabic%5Bwdth,wght%5D.ttf",
     "deva": "notosansdevanagari/NotoSansDevanagari%5Bwdth,wght%5D.ttf",
     "beng": "notosansbengali/NotoSansBengali%5Bwdth,wght%5D.ttf",
+    "sym": "notosansmath/NotoSansMath-Regular.ttf",
 }
 
 WORK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "_work")
@@ -75,7 +76,7 @@ def subset(font, unicodes, keep_layout=False):
     o.notdef_outline = True
     o.glyph_names = False
     o.hinting = False
-    o.drop_tables += ["GSUB", "GPOS", "GDEF", "STAT", "MVAR", "HVAR", "VVAR", "vhea", "vmtx", "DSIG"]
+    o.drop_tables += ["GSUB", "GPOS", "GDEF", "STAT", "MVAR", "HVAR", "VVAR", "vhea", "vmtx", "DSIG", "MATH"]
     s = Subsetter(options=o)
     s.populate(unicodes=unicodes)
     s.subset(font)
@@ -178,6 +179,15 @@ def main(out):
     parts = []
     f = subset(static(fetch("latin")), latin)
     parts.append(f)
+    sym_ok = False
+    # Noto Sans'ta ok (→ ← ↑ ↓) ve geometrik (▲ ▼ ■) glifleri yok: Noto Sans Math'ten al.
+    try:
+        sym = rng(0x2190, 0x21FF) + rng(0x25A0, 0x25FF) + rng(0x2600, 0x26FF) + rng(0x2700, 0x27BF)
+        have = set(f.getBestCmap().keys())
+        parts.append(subset(static(fetch("sym")), [c for c in sym if c not in have]))
+        sym_ok = True
+    except Exception as e:
+        print("sembol yazı tipi atlandı:", e)
     for key, cps in (("sc", cjk), ("kr", hangul), ("deva", deva), ("beng", beng)):
         parts.append(subset(static(fetch(key)), cps))
     ar = static(fetch("arabic"))
@@ -199,7 +209,13 @@ def main(out):
 
     mo = MergeOptions()
     mo.drop_tables = ["GSUB", "GPOS", "GDEF", "vhea", "vmtx"]
-    merged = Merger(options=mo).merge(paths)
+    try:
+        merged = Merger(options=mo).merge(paths)
+    except Exception as e:
+        if not sym_ok:
+            raise
+        print("sembolle birleştirme başarısız, sembolsüz:", e)
+        merged = Merger(options=mo).merge([paths[0]] + paths[2:])
     name = merged["name"]
     for rec in name.names:
         if rec.nameID in (1, 4):

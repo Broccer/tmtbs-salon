@@ -631,7 +631,7 @@ public partial class SalonDirector : MonoBehaviour
         {
             int m = Characters.SavedModel;
             bool ch = false;
-            Pick(T("Karakter"), Characters.Labels[m], ref m, Characters.Count, ref ch);
+            Pick(T("Karakter"), T(Characters.Labels[m]), ref m, Characters.Count, ref ch);
             if (ch)
             {
                 Characters.SavedModel = m;
