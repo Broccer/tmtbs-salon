@@ -129,9 +129,11 @@ public partial class SalonDirector
         if (GUILayout.Button(">>", GUILayout.Width(46), GUILayout.Height(40))) { double p = px; for (int i = 0; i < 5; i++) p = Tick.Up(p); priceText = PxText(ClampPx(s, p)); }
         GUILayout.EndHorizontal();
         GUILayout.BeginHorizontal();
-        if (s.bestAsk > 0 && GUILayout.Button($"<size=12>En iyi satış</size>\n<b>{Fmt.N2(s.bestAsk)}</b>", GUILayout.Height(40))) priceText = PxText(ClampPx(s, s.bestAsk));
-        if (GUILayout.Button($"<size=12>Son fiyat</size>\n<b>{Fmt.N2(s.price)}</b>", GUILayout.Height(40))) priceText = PxText(ClampPx(s, s.price));
-        if (s.bestBid > 0 && GUILayout.Button($"<size=12>En iyi alış</size>\n<b>{Fmt.N2(s.bestBid)}</b>", GUILayout.Height(40))) priceText = PxText(ClampPx(s, s.bestBid));
+        // iki satırlı kısayollar: Noto'nun satır yüksekliği daha büyük, iç boşluk az + yükseklik fazla
+        if (quickBtn == null) quickBtn = new GUIStyle(GUI.skin.button) { richText = true, fontSize = 14, padding = new RectOffset(4, 4, 2, 2), alignment = TextAnchor.MiddleCenter };
+        if (s.bestAsk > 0 && GUILayout.Button($"<size=11>En iyi satış</size>\n<b>{Fmt.N2(s.bestAsk)}</b>", quickBtn, GUILayout.Height(50))) priceText = PxText(ClampPx(s, s.bestAsk));
+        if (GUILayout.Button($"<size=11>Son fiyat</size>\n<b>{Fmt.N2(s.price)}</b>", quickBtn, GUILayout.Height(50))) priceText = PxText(ClampPx(s, s.price));
+        if (s.bestBid > 0 && GUILayout.Button($"<size=11>En iyi alış</size>\n<b>{Fmt.N2(s.bestBid)}</b>", quickBtn, GUILayout.Height(50))) priceText = PxText(ClampPx(s, s.bestBid));
         GUILayout.EndHorizontal();
         double typed = ParsePrice(priceText);
         px = ClampPx(s, typed);
@@ -279,6 +281,7 @@ public partial class SalonDirector
     }
 
     Texture2D chartTex;
+    GUIStyle quickBtn;
     float chartHi, chartLo;
 
     /// <summary>Fiyat çizgisi + altında geçişli dolgu + yatay kılavuz çizgileri; bir kez doku olarak çizilir.</summary>
@@ -359,17 +362,17 @@ public partial class SalonDirector
             GUI.DrawTexture(rect, Texture2D.whiteTexture);
             GUI.color = old;
             GUI.DrawTexture(rect, chartTex, ScaleMode.StretchToFill, true);
-            GUI.Label(new Rect(rect.x + 6, rect.y + 2, 200, 20), Fmt.N2(chartHi), small);
-            GUI.Label(new Rect(rect.x + 6, rect.yMax - 20, 200, 20), Fmt.N2(chartLo), small);
+            GUI.Label(new Rect(rect.x + 6, rect.y + 2, 200, 24), Fmt.N2(chartHi), small);
+            GUI.Label(new Rect(rect.x + 6, rect.yMax - 24, 200, 24), Fmt.N2(chartLo), small);
             double last = J.D(pts[pts.Count - 1], "f");
-            GUI.Label(new Rect(rect.xMax - 130, rect.y + 2, 124, 20), "<b>" + Fmt.N2(last) + "</b>", right);
+            GUI.Label(new Rect(rect.xMax - 130, rect.y + 2, 124, 24), "<b>" + Fmt.N2(last) + "</b>", right);
             if (pts.Count > 2)
             {
-                GUI.Label(new Rect(rect.x + 6, rect.yMax + 1, 200, 18), ShortDate(J.S(pts[0], "t")), small);
-                GUI.Label(new Rect(rect.xMax - 206, rect.yMax + 1, 200, 18), ShortDate(J.S(pts[pts.Count - 1], "t")), right);
+                GUI.Label(new Rect(rect.x + 6, rect.yMax + 1, 200, 22), ShortDate(J.S(pts[0], "t")), small);
+                GUI.Label(new Rect(rect.xMax - 206, rect.yMax + 1, 200, 22), ShortDate(J.S(pts[pts.Count - 1], "t")), right);
             }
         }
-        GUILayout.Space(18);
+        GUILayout.Space(22);
         if (pts.Count <= 1) GUILayout.Label("Bu aralıkta işlem yok.", small);
         Row("Açılış", Fmt.N2(J.D(chart, "acilis")));
         Row("Kapanış", Fmt.N2(J.D(chart, "kapanis")));
