@@ -6,8 +6,9 @@ using UnityEngine.InputSystem.Controls;
 #endif
 
 /// <summary>
-/// Telefon kontrolleri: sol altta serbest joystick (yukarı/aşağı yürür, sağa/sola döner),
-/// sağ altta İŞLEM (E) ve KOŞ düğmeleri. Dokunuşlar ham okunur; IMGUI düğmelerinden bağımsızdır.
+/// Telefon kontrolleri: sol altta serbest joystick (kameraya göre yürür; sonuna kadar itince koşar),
+/// sağ altta İŞLEM (E) ve KOŞ düğmeleri. Ekranın geri kalanında bir parmakla sürüklemek kamerayı döndürür,
+/// iki parmak yakınlaştırır, kısa dokunuş tıklamadır. Dokunuşlar ham okunur; IMGUI düğmelerinden bağımsızdır.
 /// Yalnız dokunmatik arayüzde ve hareket serbestken görünür.
 /// </summary>
 public class TouchControls : MonoBehaviour
@@ -17,6 +18,25 @@ public class TouchControls : MonoBehaviour
     public static bool InteractDown;
     public static bool Visible;
     public static string InteractLabel = "İŞLEM";
+    /// <summary>Bu karede kamera sürüklemesi (piksel) ve iki parmak aralığının değişimi (piksel, + = açıldı).</summary>
+    public static Vector2 LookDelta;
+    public static float PinchDelta;
+    static bool tap;
+    static Vector2 tapPos;
+
+    /// <summary>Kısa dokunuş oldu mu (bir kez döner).</summary>
+    public static bool TakeTap(out Vector2 pos)
+    {
+        pos = tapPos;
+        if (!tap) return false;
+        tap = false;
+        return true;
+    }
+
+    int camId = -1, cam2Id = -1;
+    Vector2 camPos, cam2Pos, camStart;
+    float camTime, camMoved;
+    bool camMulti;
 
     struct T { public int id; public Vector2 pos; public bool began, ended; }
 
@@ -71,16 +91,20 @@ public class TouchControls : MonoBehaviour
     void Update()
     {
         InteractDown = false;
+        LookDelta = Vector2.zero;
+        PinchDelta = 0f;
+        tap = false;
         ReadTouches();
         Visible = HtmlInput.Touch && !InputReader.Blocked && !HtmlInput.Open_;
         if (!Visible)
         {
-            stickId = btnId = runId = -1;
+            stickId = btnId = runId = camId = cam2Id = -1;
             Move = Vector2.zero;
             return;
         }
 
-        bool stickAlive = false, btnAlive = false, runAlive = false;
+        bool stickAlive = false, btnAlive = false, runAlive = false, camAlive = false, cam2Alive = false;
+        Vector2 newCam = camPos, newCam2 = cam2Pos;
         foreach (var t in touches)
         {
             if (t.began)
@@ -93,7 +117,29 @@ public class TouchControls : MonoBehaviour
                     stickOrigin = t.pos;
                     stickPos = t.pos;
                 }
+                else if (camId < 0)
+                {
+                    camId = t.id; camPos = newCam = camStart = t.pos;
+                    camTime = Time.unscaledTime; camMoved = 0f; camMulti = false;
+                }
+                else if (cam2Id < 0 && t.id != camId)
+                {
+                    cam2Id = t.id; cam2Pos = newCam2 = t.pos; camMulti = true;
+                }
             }
+            if (t.id == camId)
+            {
+                newCam = t.pos;
+                if (t.ended)
+                {
+                    float u = Unit;
+                    if (!camMulti && camMoved < 12f * u && Time.unscaledTime - camTime < 0.35f && GUIUtility.hotControl == 0)
+                    { tap = true; tapPos = camStart; }
+                    camId = -1;
+                }
+                else camAlive = true;
+            }
+            if (t.id == cam2Id) { newCam2 = t.pos; if (t.ended) cam2Id = -1; else cam2Alive = true; }
             if (t.id == stickId)
             {
                 if (t.ended) stickId = -1; else { stickAlive = true; stickPos = t.pos; }
@@ -104,6 +150,26 @@ public class TouchControls : MonoBehaviour
         if (!stickAlive) stickId = -1;
         if (!btnAlive) btnId = -1;
         if (!runAlive) runId = -1;
+        if (!camAlive) camId = -1;
+        if (!cam2Alive) cam2Id = -1;
+
+        // Kamera: tek parmak döndürür, iki parmak yakınlaştırır (arayüz öğesi sürüklenmiyorsa)
+        if (camId >= 0 || cam2Id >= 0)
+        {
+            bool ui = GUIUtility.hotControl != 0;
+            if (camId >= 0 && cam2Id >= 0)
+            {
+                PinchDelta = ui ? 0f : (newCam - newCam2).magnitude - (camPos - cam2Pos).magnitude;
+            }
+            else if (camId >= 0)
+            {
+                Vector2 d = newCam - camPos;
+                camMoved += d.magnitude;
+                if (!ui && !camMulti && camMoved > 6f * Unit) LookDelta = d;
+            }
+            camPos = newCam;
+            cam2Pos = newCam2;
+        }
 
         if (stickId >= 0)
         {
@@ -131,7 +197,7 @@ public class TouchControls : MonoBehaviour
         Vector2 kd = Vector2.ClampMagnitude(k - o, 80 * u);
         Circle(o, 80 * u, new Color(1, 1, 1, stickId >= 0 ? 0.18f : 0.10f));
         Circle(o + kd, 36 * u, new Color(1f, 0.84f, 0.3f, stickId >= 0 ? 0.75f : 0.4f));
-        if (stickId < 0) Label(o + new Vector2(0, -105 * u), Loc.T("yürü / dön"), 14 * u);
+        if (stickId < 0) Label(o + new Vector2(0, -105 * u), Loc.T("yürü"), 14 * u);
 
         // İşlem
         Circle(InteractCenter, BtnR, btnId >= 0 ? new Color(0.06f, 0.7f, 0.72f, 0.95f) : new Color(0.06f, 0.6f, 0.62f, 0.75f));

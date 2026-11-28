@@ -1,7 +1,8 @@
 using UnityEngine;
 
 /// <summary>
-/// Oyuncunun borsacısı: W/S ileri-geri, A/D döner, Shift koşar (telefonda joystick).
+/// Oyuncunun borsacısı: hareket kameraya göredir (W/ileri = kameranın baktığı yön, A/D yana), karakter gittiği yöne
+/// yumuşakça döner. Shift koşar; telefonda joystick sonuna kadar itilince de koşar.
 /// Önündeki en yakın kullanılabilir şeyi (banko, vezne, sandalye, bilgisayar) bulur; sandalyeye oturabilir.
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
@@ -9,30 +10,44 @@ public class Walker : MonoBehaviour
 {
     public float walkSpeed = 3.4f;
     public float runSpeed = 7f;
-    public float turnSpeed = 150f;
+    public float turnSpeed = 720f; // derece/sn: gidilen yöne dönüş
     public TextMesh nameTag;
 
     Rigidbody rb;
+    Transform cam;
     public Interactable Nearest { get; private set; }
     public Seat SittingOn { get; private set; }
 
     void Awake() { rb = GetComponent<Rigidbody>(); }
+
+    /// <summary>Girdiyi (x yan, y ileri) kameranın yatay yönüne göre dünyaya çevirir.</summary>
+    Vector3 WorldMove(Vector2 m)
+    {
+        if (cam == null && Camera.main != null) cam = Camera.main.transform;
+        Vector3 f = cam != null ? cam.forward.Flat() : transform.forward.Flat();
+        if (f.sqrMagnitude < 0.0001f) f = cam != null ? cam.up.Flat() : Vector3.forward;
+        f.Normalize();
+        Vector3 r = new Vector3(f.z, 0f, -f.x);
+        return Vector3.ClampMagnitude(r * m.x + f * m.y, 1f);
+    }
 
     void FixedUpdate()
     {
         if (rb.isKinematic) return;
         Vector2 m = InputReader.Move();
         float dt = Time.fixedDeltaTime;
-        float turn = m.x * turnSpeed * dt;
-        if (m.y < -0.1f) turn = -turn * 0.6f; // geri giderken dönüş ters hissettirmesin
-        rb.MoveRotation(rb.rotation * Quaternion.Euler(0f, turn, 0f));
-
-        float speed = InputReader.Run() ? runSpeed : walkSpeed;
-        if (m.y < 0f) speed *= 0.6f;
-        Vector3 fwd = rb.rotation * Vector3.forward;
-        Vector3 want = fwd * (m.y * speed);
+        Vector3 dir = WorldMove(m);
+        float amount = dir.magnitude;
+        if (amount > 0.05f)
+        {
+            Quaternion face = Quaternion.LookRotation(dir / amount, Vector3.up);
+            rb.MoveRotation(Quaternion.RotateTowards(rb.rotation, face, turnSpeed * dt));
+        }
+        bool run = InputReader.Run() || (TouchControls.Move.magnitude > 0.95f);
+        float speed = run ? runSpeed : walkSpeed;
+        Vector3 want = dir * speed;
         Vector3 v = rb.GetVelocity();
-        Vector3 h = Vector3.MoveTowards(v.Flat(), want, 22f * dt);
+        Vector3 h = Vector3.MoveTowards(v.Flat(), want, 24f * dt);
         rb.SetVelocity(new Vector3(h.x, v.y, h.z));
     }
 
