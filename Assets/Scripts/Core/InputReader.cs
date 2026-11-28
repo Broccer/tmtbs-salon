@@ -149,7 +149,7 @@ public static class InputReader
             if (m.leftButton.wasPressedThisFrame) { leftArmed = true; leftDragging = false; leftDownPos = pos; dragPx = 0f; }
             if (leftArmed && m.leftButton.isPressed)
             {
-                dragPx += d.magnitude;
+                dragPx = Mathf.Max(dragPx, (pos - leftDownPos).magnitude); // basılan noktadan uzaklık (oraya gelirken yapılan hareket sayılmaz)
                 if (!leftDragging && dragPx > 8f && GUIUtility.hotControl == 0 && !TouchControls.Owns(leftDownPos)) leftDragging = true;
             }
             if (m.leftButton.wasReleasedThisFrame)
@@ -177,7 +177,7 @@ public static class InputReader
         if (Input.GetMouseButtonDown(0)) { leftArmed = true; leftDragging = false; leftDownPos = pos; dragPx = 0f; }
         if (leftArmed && Input.GetMouseButton(0))
         {
-            dragPx += d.magnitude;
+            dragPx = Mathf.Max(dragPx, (pos - leftDownPos).magnitude);
             if (!leftDragging && dragPx > 8f && GUIUtility.hotControl == 0 && !TouchControls.Owns(leftDownPos)) leftDragging = true;
         }
         if (Input.GetMouseButtonUp(0))
