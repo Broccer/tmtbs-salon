@@ -95,7 +95,7 @@ public partial class SalonDirector : MonoBehaviour
             fadeUntil = Time.time + 1.5f;
             gateAgain = Time.time + 3f;
             Show(T("Trade of MTBS · Seans salonu"), 3f);
-            Hint(T("Bankolara yaklaş ve al-sat. Arkada MTBS Bankası veznesi ve düello salonu var."), 8f);
+            Hint(T("Bankolara yaklaş ve al-sat. Arkada solda MTBS Bankası veznesi, sağda sıralama duvarları ve çalışma masaları var."), 8f);
             return;
         }
         player.Teleport(Town.HomeSpawn, Town.HomeFacing);
@@ -158,6 +158,14 @@ public partial class SalonDirector : MonoBehaviour
         if (view != View.Game) return;
         WorldUpdate();
         chase.seated = player.SittingOn != null;
+        chase.focus = player.SittingOn != null ? player.SittingOn.focus : null;
+        // Masada: kamera ekrana yaklaşınca panel açılır; panel kapanınca kalkılır
+        if (player.SittingOn != null && player.SittingOn.focus != null)
+        {
+            if (deskOpenAt > 0f && Time.time >= deskOpenAt) { deskOpenAt = 0f; OpenDesk(); }
+            else if (deskOpenAt <= 0f && panel == Panel.None) player.StandUp();
+        }
+        else deskOpenAt = 0f;
         var near = player.Nearest;
         TouchControls.InteractLabel = near != null ? near.buttonLabel : T("İŞLEM");
 
@@ -183,7 +191,20 @@ public partial class SalonDirector : MonoBehaviour
                 var cr = h.collider.GetComponent<ChartRangeButton>();
                 if (cr != null && (rb == null || h.distance < rbDist)) { rb = cr; rbDist = h.distance; }
             }
-            if (rb != null && rb.kiosk != null && (kb == null || rbDist < kbDist))
+            Clickable3D wc = null;
+            float wcDist = 0f;
+            foreach (var h in Physics.RaycastAll(ray, 60f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide))
+            {
+                var c = h.collider.GetComponent<Clickable3D>();
+                if (c != null && (wc == null || h.distance < wcDist)) { wc = c; wcDist = h.distance; }
+            }
+            if (wc != null && (kb == null || wcDist < kbDist) && (rb == null || wcDist < rbDist))
+            {
+                float d = (wc.transform.position - player.transform.position).Flat().magnitude;
+                if (d <= wc.maxDistance) wc.onClick?.Invoke();
+                else Show(T("Biraz daha yaklaş"), 1.2f);
+            }
+            else if (rb != null && rb.kiosk != null && (kb == null || rbDist < kbDist))
             {
                 float d = (rb.kiosk.StandPoint() - player.transform.position).Flat().magnitude;
                 if (d < 9f) { rb.kiosk.SetRange(rb.key); if (Bell.I) Bell.I.Tick(); }
@@ -209,6 +230,7 @@ public partial class SalonDirector : MonoBehaviour
     }
 
     float kbDist;
+    float deskOpenAt;
 
     void Use(Interactable it)
     {
@@ -217,6 +239,10 @@ public partial class SalonDirector : MonoBehaviour
         {
             case Interactable.Kind.Counter: if (it.counter != null && it.counter.stock != null) OpenTrade(it.counter.stock); break;
             case Interactable.Kind.Computer: OpenPhone(true); break;
+            case Interactable.Kind.Seat when it.seat != null && it.seat.focus != null:
+                player.Sit(it.seat);
+                deskOpenAt = Time.time + 0.9f;
+                break;
             case Interactable.Kind.Seat:
                 player.Sit(it.seat);
                 Hint(T("Panoları izliyorsun. Kalkmak için yürü."), 4f);

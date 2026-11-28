@@ -246,14 +246,14 @@ public partial class SalonDirector
 
     // ---------------------------------------------------------------- Kademeler (oyuncu seviyesi)
 
-    static readonly (double esik, string ad)[] Tiers =
+    public static readonly (double esik, string ad)[] Tiers =
     {
         (0, "Çaylak"), (10000, "Yatırımcı"), (50000, "Tüccar"), (150000, "Borsacı"),
         (500000, "Fon Yöneticisi"), (1500000, "Borsa Kurdu"), (5000000, "Balina"), (20000000, "Efsane"),
     };
 
     /// <summary>Net değere göre kademe numarası (1..8).</summary>
-    static int TierOf(double net)
+    public static int TierOf(double net)
     {
         int k = 1;
         for (int i = 0; i < Tiers.Length; i++) if (net >= Tiers[i].esik) k = i + 1;
@@ -367,7 +367,7 @@ public partial class SalonDirector
         if (GUILayout.Button(T("Peron A"), btn, GUILayout.Height(42))) { GoTo(new Vector3(-BotTrader.Lane, 0, 0), Quaternion.identity); Show(T("Peron A"), 1.5f); }
         if (GUILayout.Button(T("Peron B"), btn, GUILayout.Height(42))) { GoTo(new Vector3(BotTrader.Lane, 0, 0), Quaternion.identity); Show(T("Peron B"), 1.5f); }
         if (GUILayout.Button(T("MTBS Bankası veznesi"), btn, GUILayout.Height(42))) { GoTo(SalonBuilder.VezneSpot, Quaternion.LookRotation(Vector3.back)); Show(T("Vezne"), 1.5f); }
-        if (GUILayout.Button(T("Düello salonu"), btn, GUILayout.Height(42))) { GoTo(SalonBuilder.DuelSpot, Quaternion.LookRotation(Vector3.back)); Show(T("Düello salonu"), 1.5f); }
+        if (GUILayout.Button(T("Sıralama ve çalışma masaları"), btn, GUILayout.Height(42))) { GoTo(SalonBuilder.DeskSpot, Quaternion.LookRotation(Vector3.back)); Show(T("Sıralama ve çalışma masaları"), 1.5f); }
         if (GUILayout.Button(T("Salon kapısı · şehre çıkış"), btn, GUILayout.Height(42))) { GoTo(new Vector3(0, 0, -SalonBuilder.HalfD + 4.5f), Quaternion.LookRotation(Vector3.back)); gateAgain = Time.time + 1f; }
         GUILayout.Label(T("Trade of MTBS hesabıyla yalnız borsa salonundasın. Şehre çıkmak, ev, iş ve dükkânlar için Müteşebbis hesabıyla gir."), small);
         SalonPlayers();

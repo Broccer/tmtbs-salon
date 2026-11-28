@@ -157,6 +157,7 @@ public partial class SalonDirector
     void LoadTabName(string tab)
     {
         if (tab == "Kürsü") return; // kürsü kendi verisini (duyurular) tutar
+        if (tab == "Masa") { LoadTabName(DeskTabs[deskTab]); return; }
         var m = Market.I;
         if (m.Tm && LoadTm(tab)) return;
         switch (tab)
@@ -197,6 +198,7 @@ public partial class SalonDirector
     void DrawTabName(string tab)
     {
         if (tab == "Kürsü") { TabPodium(); return; }
+        if (tab == "Masa") { DrawDesk(); return; }
         if (Market.I.Tm && DrawTm(tab)) return;
         switch (tab)
         {
@@ -820,5 +822,38 @@ public partial class SalonDirector
         GUI.color = new Color(0, 0, 0, a);
         GUI.DrawTexture(new Rect(0, 0, W, H), Texture2D.whiteTexture);
         GUI.color = c;
+    }
+
+    // ---------------------------------------------------------------- Çalışma masası (salonun arka sağ köşesi)
+
+    static readonly string[] DeskTabs = { "Portföy", "Düello", "Sıralama" };
+    int deskTab;
+
+    void OpenDesk()
+    {
+        OpenPlace("Masa", T("Çalışma masası"), 0);
+        Show(T("Kalkmak için paneli kapat"), 2f);
+    }
+
+    void DrawDesk()
+    {
+        GUILayout.BeginHorizontal();
+        for (int i = 0; i < DeskTabs.Length; i++)
+            if (TabBtn(T(DeskTabs[i]), i == deskTab, 36))
+            {
+                deskTab = i;
+                phoneMsg = null;
+                scroll = Vector2.zero;
+                LoadTabName(DeskTabs[i]);
+            }
+        GUILayout.EndHorizontal();
+        GUILayout.Space(6);
+        string tab = DeskTabs[deskTab];
+        if (tab == "Düello" && !Market.I.Tm)
+        {
+            GUILayout.Label(T("Düello Trade of MTBS hesabıyla oynanır. Menü → Profil → çıkış yapıp Trade of MTBS ile gir."), label);
+            return;
+        }
+        DrawTabName(tab);
     }
 }

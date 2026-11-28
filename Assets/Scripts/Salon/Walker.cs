@@ -114,7 +114,7 @@ public class Walker : MonoBehaviour
         s.taken = false;
         var ca = GetComponent<CharAnim>();
         if (ca != null) ca.sitting = false;
-        Teleport(s.transform.TransformPoint(new Vector3(0, 0, 0.8f)), s.SitRotation);
+        Teleport(s.transform.TransformPoint(new Vector3(0, 0, -0.9f)), s.SitRotation); // sandalyenin arkasına (masa önde)
         SetFrozen(false);
     }
 }

@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>
 /// Dünyayı koddan kurar:
 ///  - Seans salonu: duvarlara yaslı marka bankoları (her birinde alış/satış görevlisi, üstte tabela),
-///    ön duvarda dev piyasa tablosu ve kayan bant, ortada sırt sırta banko peronları; arka köşelerde vezne ve düello salonu.
+///    ön duvarda dev piyasa tablosu ve kayan bant, ortada sırt sırta banko peronları; arka sol köşede vezne, arka sağ köşede sıralama duvarları ve yuvarlak çalışma masaları.
 ///  - Selçuklu cepheli bina + koridor (SeljukBuilding), meydanda ev ve MTBS Bankası (Town).
 ///  - Oyuncu, bot borsacılar, kamera, ışıklar, arayüz.
 /// Boş sahnede Play'e basınca da kendiliğinden çalışır.
@@ -87,7 +87,8 @@ public class SalonBuilder : MonoBehaviour
         City.Build(root);                   // cadde, otobüs, duraklar, iş merkezi, emlak, galeri, müzayede, dükkânlar
         BuildCounters();
         BuildBank();
-        BuildDuelHall();
+        RankWall.Build(root, HalfW, HalfD);
+        BuildDesks();
         BuildTmGate();
         var player = BuildPlayer();
         BuildBots(12);
@@ -212,7 +213,7 @@ public class SalonBuilder : MonoBehaviour
         holder.SetParent(root, false);
         var spots = new List<(Vector3 p, Quaternion r)>();
         float wx = HalfW - CounterInset;
-        // Yan duvarlar (önden arkaya; arka köşeler vezne ve düello salonuna ayrıldı)
+        // Yan duvarlar (önden arkaya; arka köşeler vezne ile sıralama/çalışma köşesine ayrıldı)
         for (float z = HalfD - 4.6f; z >= -HalfD + 11.3f; z -= CounterStep)
         {
             spots.Add((new Vector3(-wx, 0, z), Quaternion.LookRotation(Vector3.right)));
@@ -298,55 +299,96 @@ public class SalonBuilder : MonoBehaviour
         }
     }
 
-    // ================================================================ düello salonu (arka sağ köşe)
+    // ================================================================ çalışma masaları (arka sağ köşe, sıralama duvarlarının önü)
 
-    public static readonly Vector3 DuelSpot = new Vector3(14.6f, 0, -HalfD + 10f);
+    /// <summary>Masaların önü (hızlı git noktası).</summary>
+    public static readonly Vector3 DeskSpot = new Vector3(14.5f, 0, -HalfD + 9.6f);
 
-    void BuildDuelHall()
+    /// <summary>
+    /// Üç yuvarlak çalışma masası; her masa buzlu cam bölmelerle üçe ayrılmış, her bölmede bir bilgisayar ekranı ve koltuk.
+    /// Oyuncu koltuğa oturunca kamera ekrana yaklaşır ve masa paneli (portföy, düello, sıralama) açılır.
+    /// </summary>
+    void BuildDesks()
     {
-        var t = new GameObject("Duello_Salonu").transform;
+        var t = new GameObject("Calisma_Masalari").transform;
         t.SetParent(root, false);
-        float x0 = 9f, x1 = HalfW, zf = -HalfD + 8f;   // ön duvar çizgisi
-        float doorL = 13.1f, doorR = 16.1f;
-        var wall = Gfx.Lit(new Color(0.30f, 0.06f, 0.09f), 0.3f);
-        var gold = Gfx.Glow(Gold);
-        float h = 3.4f;
-        // Ön duvar (kapı boşluklu) ve sol duvar
-        Gfx.Box("Duello_On_Sol", t, new Vector3((x0 + doorL) / 2f, h / 2f, zf), new Vector3(doorL - x0, h, 0.25f), wall, true);
-        Gfx.Box("Duello_On_Sag", t, new Vector3((doorR + x1) / 2f, h / 2f, zf), new Vector3(x1 - doorR, h, 0.25f), wall, true);
-        Gfx.Box("Duello_Yan", t, new Vector3(x0, h / 2f, (zf - HalfD) / 2f), new Vector3(0.25f, h, zf + HalfD), wall, true);
-        Gfx.Box("Duello_Ust_Serit", t, new Vector3((x0 + x1) / 2f, h + 0.05f, zf), new Vector3(x1 - x0, 0.1f, 0.3f), gold);
-        Gfx.Box("Duello_Tabela", t, new Vector3((doorL + doorR) / 2f, h + 0.75f, zf), new Vector3(6.4f, 1.2f, 0.15f), Gfx.Lit(Panel, 0.85f));
-        Gfx.Text("Duello_Yazi", t, new Vector3((doorL + doorR) / 2f, h + 0.82f, zf + 0.1f), Quaternion.LookRotation(Vector3.back), Loc.T("DÜELLO SALONU"), 0.5f, Gold);
-        Gfx.Text("Duello_Alt", t, new Vector3((doorL + doorR) / 2f, h + 0.38f, zf + 0.1f), Quaternion.LookRotation(Vector3.back), Loc.T("Trade of MTBS · bire bir borsa yarışı"), 0.2f, Color.white);
-        Gfx.Box("Duello_Zemin", t, new Vector3((x0 + x1) / 2f, 0.008f, (zf - HalfD) / 2f), new Vector3(x1 - x0 - 0.3f, 0.01f, zf + HalfD - 0.3f), Gfx.Lit(new Color(0.12f, 0.05f, 0.07f), 0.4f));
-
-        // Karşılıklı iki düello masası ve aradaki skor ekranı
-        float cx = (x0 + x1) / 2f, cz = -HalfD + 3.6f;
-        var desk = Gfx.Lit(new Color(0.08f, 0.09f, 0.12f), 0.7f);
-        foreach (int s in new[] { -1, 1 })
+        var top = Gfx.Lit(new Color(0.20f, 0.13f, 0.09f), 0.65f);
+        var metal = Gfx.Lit(new Color(0.08f, 0.09f, 0.11f), 0.7f);
+        var glass = Gfx.Lit(new Color(0.55f, 0.72f, 0.82f), 0.95f);
+        var chair = Gfx.Lit(new Color(0.06f, 0.14f, 0.32f), 0.3f);
+        var rug = Gfx.Lit(new Color(0.14f, 0.05f, 0.08f), 0.1f);
+        var gold = Gfx.Glow(Gold * 0.8f);
+        var screen = Gfx.Glow(new Color(0.07f, 0.22f, 0.38f));
+        Vector3[] centers = { new Vector3(12f, 0, -19.6f), new Vector3(17f, 0, -19.6f), new Vector3(14.5f, 0, -23.3f) };
+        for (int n = 0; n < centers.Length; n++)
         {
-            Gfx.Box("Duello_Masa", t, new Vector3(cx + s * 2.6f, 0.5f, cz), new Vector3(1.4f, 1f, 2.4f), desk, true);
-            var scr = Gfx.Box("Duello_Ekran", t, new Vector3(cx + s * 2.2f, 1.45f, cz), new Vector3(0.06f, 0.8f, 1.6f), Gfx.Glow(s < 0 ? new Color(0.3f, 0.9f, 0.45f) : new Color(1f, 0.42f, 0.42f)));
-            scr.name = "Duello_Ekran";
+            var m = new GameObject("Masa_" + (n + 1)).transform;
+            m.SetParent(t, false);
+            m.position = centers[n];
+            m.rotation = Quaternion.Euler(0, n * 40f + 20f, 0);
+            var block = m.gameObject.AddComponent<BoxCollider>(); // içinden geçilmesin
+            block.center = new Vector3(0, 0.45f, 0);
+            block.size = new Vector3(1.7f, 0.9f, 1.7f);
+
+            Gfx.Prim(PrimitiveType.Cylinder, "Hali", m, new Vector3(0, 0.006f, 0), new Vector3(3.9f, 0.003f, 3.9f), rug, false);
+            Gfx.Prim(PrimitiveType.Cylinder, "Tabla", m, new Vector3(0, 0.76f, 0), new Vector3(2.1f, 0.03f, 2.1f), top, false);
+            Gfx.Prim(PrimitiveType.Cylinder, "Tabla_Serit", m, new Vector3(0, 0.745f, 0), new Vector3(2.15f, 0.012f, 2.15f), gold, false);
+            Gfx.Prim(PrimitiveType.Cylinder, "Ayak", m, new Vector3(0, 0.38f, 0), new Vector3(0.26f, 0.36f, 0.26f), metal, false);
+            Gfx.Prim(PrimitiveType.Cylinder, "Taban", m, new Vector3(0, 0.02f, 0), new Vector3(0.9f, 0.02f, 0.9f), metal, false);
+            Gfx.Prim(PrimitiveType.Cylinder, "Orta_Gobek", m, new Vector3(0, 0.98f, 0), new Vector3(0.2f, 0.2f, 0.2f), gold, false);
+
+            for (int k = 0; k < 3; k++)
+            {
+                // Bölme: iki çalışma alanı arasında buzlu cam
+                var dDir = Quaternion.Euler(0, 60f + k * 120f, 0) * Vector3.forward;
+                var div = Gfx.Box("Bolme", m, dDir * 0.52f + Vector3.up * 0.99f, new Vector3(0.025f, 0.44f, 0.9f), glass);
+                div.transform.localRotation = Quaternion.LookRotation(dDir);
+
+                // Ekran: bölümün ortasında, dışa (koltuğa) bakar
+                var dir = Quaternion.Euler(0, k * 120f, 0) * Vector3.forward;
+                var face = Quaternion.LookRotation(dir);
+                var bezel = Gfx.Box("Ekran_Cerceve", m, dir * 0.38f + Vector3.up * 1.08f, new Vector3(0.62f, 0.38f, 0.03f), metal);
+                bezel.transform.localRotation = face;
+                var stand = Gfx.Box("Ekran_Ayak", m, dir * 0.35f + Vector3.up * 0.88f, new Vector3(0.05f, 0.24f, 0.05f), metal);
+                stand.transform.localRotation = face;
+                var q = Gfx.Prim(PrimitiveType.Quad, "Ekran", m, dir * 0.397f + Vector3.up * 1.08f, new Vector3(0.56f, 0.32f, 1f), screen, false);
+                q.transform.localRotation = Quaternion.LookRotation(-dir); // görünen yüzü dışa
+                Gfx.Text("Ekran_Yazi", m, dir * 0.40f + Vector3.up * 1.1f, Quaternion.LookRotation(-dir),
+                    Loc.T("<b>MTBS</b>\n<size=40>Portföy · Düello · Sıralama</size>"), 0.05f, new Color(0.75f, 0.9f, 1f));
+
+                // Koltuk
+                var cs = Gfx.Box("Koltuk_Oturak", m, dir * 1.3f + Vector3.up * 0.46f, new Vector3(0.5f, 0.08f, 0.5f), chair);
+                cs.transform.localRotation = face;
+                var cb = Gfx.Box("Koltuk_Sirt", m, dir * 1.55f + Vector3.up * 0.78f, new Vector3(0.5f, 0.56f, 0.07f), chair);
+                cb.transform.localRotation = face;
+                Gfx.Prim(PrimitiveType.Cylinder, "Koltuk_Ayak", m, dir * 1.3f + Vector3.up * 0.22f, new Vector3(0.07f, 0.22f, 0.07f), metal, false);
+
+                // Oturma noktası (masaya bakar) ve ekran odağı (ileri yönü ekrandan koltuğa)
+                var sg = new GameObject("Masa_Koltuk");
+                sg.transform.SetParent(m, false);
+                sg.transform.localPosition = dir * 1.25f;
+                sg.transform.localRotation = Quaternion.LookRotation(-dir);
+                var seat = sg.AddComponent<Seat>();
+                var focus = new GameObject("Ekran_Odak").transform;
+                focus.SetParent(m, false);
+                focus.localPosition = dir * 0.40f + Vector3.up * 1.08f;
+                focus.localRotation = face;
+                seat.focus = focus;
+                var it = Interactable.Make(sg, Interactable.Kind.Seat, new Vector3(0, 0, -0.75f), Loc.T("Çalışma masası: portföy, düello ve sıralama"), Loc.T("OTUR"), 1.9f);
+                it.seat = seat;
+            }
         }
-        Gfx.Box("Skor_Ekran", t, new Vector3(cx, 2.6f, -HalfD + 0.15f), new Vector3(6f, 2.2f, 0.1f), Gfx.Lit(Panel, 0.9f));
-        Gfx.Text("Skor_Yazi", t, new Vector3(cx, 2.6f, -HalfD + 0.22f), Quaternion.LookRotation(Vector3.back), Loc.T("SEN  vs  RAKİP\n<size=60>Aynı başlangıç parası · süre sonunda çok kazanan alır</size>"), 0.32f, Gold);
 
-        var it = new GameObject("Duello_Nokta");
-        it.transform.SetParent(t, false);
-        it.transform.position = new Vector3(cx, 0, cz);
-        Interactable.Make(it, Interactable.Kind.Duel, new Vector3(0, 0, 2.2f), Loc.T("Düello aç ya da bir düelloya katıl"), Loc.T("DÜELLO"), 2.6f);
-
-        var lg = new GameObject("Duello_Lamba");
+        var lg = new GameObject("Masa_Lamba");
         lg.transform.SetParent(t, false);
-        lg.transform.position = new Vector3(cx, 3f, -HalfD + 4f);
+        lg.transform.position = new Vector3(14.5f, 4.2f, -21f);
         var l = lg.AddComponent<Light>();
         l.type = LightType.Point;
-        l.range = 10f;
-        l.intensity = 1.4f;
-        l.color = new Color(1f, 0.8f, 0.7f);
+        l.range = 13f;
+        l.intensity = 1.2f;
+        l.color = new Color(1f, 0.88f, 0.72f);
     }
+
 
     // ================================================================ Trade of MTBS kapı bariyeri
 

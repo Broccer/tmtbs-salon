@@ -15,6 +15,8 @@ public class ChaseCamera : MonoBehaviour
     public float smoothing = 10f;
     public bool overview = true;
     public bool seated;
+    /// <summary>Oturulan çalışma masası ekranı: kamera yavaşça ekranın önüne gelir.</summary>
+    public Transform focus;
 
     /// <summary>Kameranın yatay açısı (derece). Hareket bu yöne göre okunur.</summary>
     public float Yaw { get; private set; }
@@ -37,6 +39,15 @@ public class ChaseCamera : MonoBehaviour
             float k = 1f - Mathf.Exp(-1.5f * dt);
             transform.position = Vector3.Lerp(transform.position, pos, k);
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(look - transform.position), k);
+            pivotInit = false;
+        }
+        else if (seated && focus != null)
+        {
+            Vector3 pos = focus.position + focus.forward * 0.62f + Vector3.up * 0.03f;
+            float k = 1f - Mathf.Exp(-3.2f * dt);
+            transform.position = Vector3.Lerp(transform.position, pos, k);
+            transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(focus.position - pos), k);
+            Yaw = transform.eulerAngles.y;
             pivotInit = false;
         }
         else if (seated)

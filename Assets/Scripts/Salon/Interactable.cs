@@ -39,6 +39,8 @@ public class Interactable : MonoBehaviour
 public class Seat : MonoBehaviour
 {
     public bool taken;
+    /// <summary>Çalışma masası koltuğu: oturunca kamera bu ekrana yaklaşır (ileri yönü ekrandan oyuncuya bakar).</summary>
+    public Transform focus;
     public Vector3 SitPosition => transform.position;
     public Quaternion SitRotation => transform.rotation;
 }
