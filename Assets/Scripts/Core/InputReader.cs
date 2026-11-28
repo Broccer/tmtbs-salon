@@ -146,15 +146,19 @@ public static class InputReader
         {
             Vector2 d = m.delta.ReadValue();
             Vector2 pos = m.position.ReadValue();
-            if (m.leftButton.wasPressedThisFrame) { leftArmed = true; leftDragging = false; leftDownPos = pos; dragPx = 0f; }
-            if (leftArmed && m.leftButton.isPressed)
+            bool pressedNow = m.leftButton.wasPressedThisFrame;
+            if (pressedNow) { leftArmed = true; leftDragging = false; leftDownPos = pos; dragPx = 0f; }
+            else if (leftArmed && m.leftButton.isPressed)
             {
-                dragPx = Mathf.Max(dragPx, (pos - leftDownPos).magnitude); // basılan noktadan uzaklık (oraya gelirken yapılan hareket sayılmaz)
-                if (!leftDragging && dragPx > 8f && GUIUtility.hotControl == 0 && !TouchControls.Owns(leftDownPos)) leftDragging = true;
+                // Basıştan SONRAKİ karelerin hareketi sayılır: düğmeye gelirken yapılan hareket
+                // (basış karesine düşen fare yolu) sürükleme sanılmasın.
+                dragPx += d.magnitude;
+                if (!leftDragging && dragPx > 10f && GUIUtility.hotControl == 0 && !TouchControls.Owns(leftDownPos)) leftDragging = true;
             }
             if (m.leftButton.wasReleasedThisFrame)
             {
-                if (leftArmed && !leftDragging) { clickReady = true; clickPos = leftDownPos; }
+                // Basma ile bırakma aynı kareye düştüyse (çok hızlı tıklama) basış görülmemiş olabilir: yine tıklamadır.
+                if (!leftDragging && (leftArmed || !m.leftButton.isPressed)) { clickReady = true; clickPos = pos; }
                 leftArmed = leftDragging = false;
             }
             if (GUIUtility.hotControl != 0) leftDragging = false; // bir arayüz öğesi sürükleniyor
@@ -177,12 +181,12 @@ public static class InputReader
         if (Input.GetMouseButtonDown(0)) { leftArmed = true; leftDragging = false; leftDownPos = pos; dragPx = 0f; }
         if (leftArmed && Input.GetMouseButton(0))
         {
-            dragPx = Mathf.Max(dragPx, (pos - leftDownPos).magnitude);
-            if (!leftDragging && dragPx > 8f && GUIUtility.hotControl == 0 && !TouchControls.Owns(leftDownPos)) leftDragging = true;
+            dragPx += d.magnitude;
+            if (!leftDragging && dragPx > 10f && GUIUtility.hotControl == 0 && !TouchControls.Owns(leftDownPos)) leftDragging = true;
         }
         if (Input.GetMouseButtonUp(0))
         {
-            if (leftArmed && !leftDragging) { clickReady = true; clickPos = leftDownPos; }
+            if (!leftDragging) { clickReady = true; clickPos = pos; }
             leftArmed = leftDragging = false;
         }
         if (leftDragging || Input.GetMouseButton(1)) look += d * MouseSensitivity;
