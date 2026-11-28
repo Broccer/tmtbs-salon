@@ -17,6 +17,7 @@ public class ChaseCamera : MonoBehaviour
     public bool seated;
     /// <summary>Oturulan çalışma masası ekranı: kamera yavaşça ekranın önüne gelir.</summary>
     public Transform focus;
+    public Vector3 focusCam = new Vector3(0, 0.06f, 0.85f);
 
     /// <summary>Kameranın yatay açısı (derece). Hareket bu yöne göre okunur.</summary>
     public float Yaw { get; private set; }
@@ -34,8 +35,8 @@ public class ChaseCamera : MonoBehaviour
         if (overview || target == null)
         {
             float a = Time.time * 0.07f;
-            Vector3 pos = new Vector3(Mathf.Sin(a) * 6f, 4.2f, -14.5f + Mathf.Cos(a) * 1.5f);
-            Vector3 look = new Vector3(0, 1.6f, -6f);
+            Vector3 pos = new Vector3(Mathf.Sin(a) * 6f, 4.2f + SalonBuilder.FloorY, -14.5f + Mathf.Cos(a) * 1.5f);
+            Vector3 look = new Vector3(0, 1.6f + SalonBuilder.FloorY, -6f);
             float k = 1f - Mathf.Exp(-1.5f * dt);
             transform.position = Vector3.Lerp(transform.position, pos, k);
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(look - transform.position), k);
@@ -43,7 +44,7 @@ public class ChaseCamera : MonoBehaviour
         }
         else if (seated && focus != null)
         {
-            Vector3 pos = focus.position + focus.forward * 0.85f + Vector3.up * 0.06f; // ekran çerçevesiyle birlikte görünsün
+            Vector3 pos = focus.TransformPoint(focusCam); // ekran çerçevesiyle (ya da temsilciyle) birlikte görünsün
             float k = 1f - Mathf.Exp(-3.2f * dt);
             transform.position = Vector3.Lerp(transform.position, pos, k);
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(focus.position - pos), k);
@@ -97,7 +98,8 @@ public class ChaseCamera : MonoBehaviour
         if (Physics.SphereCast(pivot, 0.3f, dir, out RaycastHit hit, len, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
             len = Mathf.Max(0.5f, hit.distance - 0.05f);
         Vector3 camPos = pivot + dir * len;
-        if (camPos.y < 0.3f) camPos.y = 0.3f; // yerin altına inmesin
+        float floor = pivot.y - PivotHeight + 0.3f;
+        if (camPos.y < floor) camPos.y = floor; // yerin altına inmesin
         transform.position = camPos;
         transform.rotation = Quaternion.LookRotation(pivot + Vector3.up * 0.15f - camPos);
     }

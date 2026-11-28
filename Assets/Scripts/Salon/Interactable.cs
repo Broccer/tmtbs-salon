@@ -41,6 +41,12 @@ public class Seat : MonoBehaviour
     public bool taken;
     /// <summary>Çalışma masası koltuğu: oturunca kamera bu ekrana yaklaşır (ileri yönü ekrandan oyuncuya bakar).</summary>
     public Transform focus;
+    /// <summary>Kameranın odağa göre yerel konumu (masada ekranın önü; bankada oyuncunun omzunun üstü).</summary>
+    public Vector3 camLocal = new Vector3(0, 0.06f, 0.85f);
+    /// <summary>Banka sandalyesi: oturunca temsilci kredi bilgisi verir, kredi/borç ekranı açılır.</summary>
+    public bool bank;
+    public TextMesh speech;
+    public string idleSpeech;
     public Vector3 SitPosition => transform.position;
     public Quaternion SitRotation => transform.rotation;
 }

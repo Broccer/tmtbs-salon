@@ -829,6 +829,14 @@ public partial class SalonDirector
     static readonly string[] DeskTabs = { "Portföy", "Düello", "Sıralama" };
     int deskTab;
 
+    /// <summary>Banka sandalyesi: temsilci kredi bilgisini verdikten sonra kredi/borç ekranı.</summary>
+    void OpenBankDesk()
+    {
+        if (Market.I.Tm) OpenCredit();
+        else OpenPlace("Fatura", T("MTBS Bankası · Salon veznesi"), 0);
+        Show(T("Kalkmak için paneli kapat"), 2f);
+    }
+
     void OpenDesk()
     {
         OpenPlace("Masa", T("Çalışma masası"), 0);

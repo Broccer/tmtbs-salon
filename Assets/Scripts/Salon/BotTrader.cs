@@ -46,7 +46,7 @@ public class BotTrader : MonoBehaviour
         if (Mathf.Abs(start.x - LaneX(a)) > 0.5f) path.Enqueue(new Vector3(LaneX(a), 0, start.z));
         if (blocked)
         {
-            float cz = (start.z + end.z) >= 0 ? CrossZ : -CrossZ;
+            float cz = CrossZ; // arkada (-z) giriş katı merdiveni var: hep önden geç
             path.Enqueue(new Vector3(LaneX(a), 0, cz));
             path.Enqueue(new Vector3(LaneX(b), 0, cz));
         }
@@ -64,7 +64,7 @@ public class BotTrader : MonoBehaviour
             facing = k;
             Route(k.StandPoint(Random.Range(-1, 2)));
         }
-        else Route(new Vector3(Random.Range(-1.5f, 1.5f), 0, Random.Range(-20f, 20f)));
+        else Route(new Vector3(Random.Range(-1.5f, 1.5f), 0, Random.Range(-11.5f, 20f)));
     }
 
     /// <summary>Sert hareket eden hissenin bankosuna koş ve bağır.</summary>

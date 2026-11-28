@@ -25,6 +25,8 @@ public class Podium : MonoBehaviour
     float nextAnnounce, swingT = -10f, bubbleUntil;
     string stripText = "";
 
+    public const float StageH = 2.4f;
+
     public static void Build(Transform root, float front)
     {
         var holder = new GameObject("Kursu");
@@ -37,26 +39,30 @@ public class Podium : MonoBehaviour
         var gold = Gfx.Glow(new Color(1f, 0.78f, 0.3f));
         var bronze = Gfx.Lit(new Color(0.72f, 0.48f, 0.18f), 0.9f);
         var wood = Gfx.Lit(new Color(0.24f, 0.13f, 0.07f), 0.55f);
+        const float S = StageH;           // yükseltilmiş sahne
 
         // Sahne ve kenar süsleri
-        Gfx.Box("Sahne", t, new Vector3(0, 0.45f, zc), new Vector3(11f, 0.9f, 3.6f), marble, true);
-        Gfx.Box("Sahne_Altin", t, new Vector3(0, 0.91f, zf + 0.04f), new Vector3(11.05f, 0.05f, 0.08f), gold);
-        Gfx.Box("Sahne_Hali", t, new Vector3(0, 0.905f, zc), new Vector3(9.5f, 0.01f, 2.8f), Gfx.Lit(new Color(0.42f, 0.06f, 0.09f), 0.1f));
+        Gfx.Box("Sahne", t, new Vector3(0, S / 2f, zc), new Vector3(11f, S, 3.6f), marble, true);
+        Gfx.Box("Sahne_Altin", t, new Vector3(0, S + 0.01f, zf + 0.04f), new Vector3(11.05f, 0.05f, 0.08f), gold);
+        Gfx.Box("Sahne_Hali", t, new Vector3(0, S + 0.005f, zc), new Vector3(9.5f, 0.01f, 2.8f), Gfx.Lit(new Color(0.42f, 0.06f, 0.09f), 0.1f));
         // Duyuru şeridi (sahnenin ön yüzünde LED bant)
-        Gfx.Box("Serit", t, new Vector3(0, 0.45f, zf - 0.02f), new Vector3(10.6f, 0.5f, 0.04f), Gfx.Lit(Color.black, 0.95f));
-        p.strip = Gfx.Text("Serit_Yazi", t, new Vector3(0, 0.45f, zf - 0.06f), Quaternion.identity,
+        Gfx.Box("Serit", t, new Vector3(0, S - 0.3f, zf - 0.02f), new Vector3(10.6f, 0.46f, 0.04f), Gfx.Lit(Color.black, 0.95f));
+        p.strip = Gfx.Text("Serit_Yazi", t, new Vector3(0, S - 0.3f, zf - 0.06f), Quaternion.identity,
             "", 0.24f, new Color(1f, 0.82f, 0.35f));
 
+        // Sahnenin ön yüzü: en çok işlem gören markalar ve aralarında yükselen / düşenler (logolarıyla)
+        p.BuildMovers(t, zf - 0.03f, S - 0.6f);
+
         // Kürsü (konuşma masası) ve tabela
-        Gfx.Box("Kursu_Masa", t, new Vector3(-1.6f, 1.45f, zc - 0.5f), new Vector3(1.1f, 1.1f, 0.6f), wood, true);
-        Gfx.Box("Kursu_Ust", t, new Vector3(-1.6f, 2.03f, zc - 0.55f), new Vector3(1.25f, 0.06f, 0.75f), wood);
-        Gfx.Box("Kursu_Plaka", t, new Vector3(-1.6f, 1.55f, zc - 0.81f), new Vector3(0.9f, 0.32f, 0.02f), gold);
-        Gfx.Text("Kursu_Yazi", t, new Vector3(-1.6f, 1.55f, zc - 0.83f), Quaternion.identity, Loc.T("BORSA YÖNETİMİ"), 0.13f, new Color(0.15f, 0.1f, 0.03f));
-        Gfx.Text("Kursu_Baslik", t, new Vector3(0, 2.95f, front - 0.12f), Quaternion.identity,
+        Gfx.Box("Kursu_Masa", t, new Vector3(-1.6f, S + 0.55f, zc - 0.5f), new Vector3(1.1f, 1.1f, 0.6f), wood, true);
+        Gfx.Box("Kursu_Ust", t, new Vector3(-1.6f, S + 1.13f, zc - 0.55f), new Vector3(1.25f, 0.06f, 0.75f), wood);
+        Gfx.Box("Kursu_Plaka", t, new Vector3(-1.6f, S + 0.65f, zc - 0.81f), new Vector3(0.9f, 0.32f, 0.02f), gold);
+        Gfx.Text("Kursu_Yazi", t, new Vector3(-1.6f, S + 0.65f, zc - 0.83f), Quaternion.identity, Loc.T("BORSA YÖNETİMİ"), 0.13f, new Color(0.15f, 0.1f, 0.03f));
+        Gfx.Text("Kursu_Baslik", t, new Vector3(0, S + 2.25f, front - 0.12f), Quaternion.identity,
             Loc.T("BORSA YÖNETİM KURULU  ·  DUYURU KÜRSÜSÜ"), 0.3f, new Color(1f, 0.8f, 0.3f));
 
         // Gong: iki dikme + üst kiriş + asılı bronz disk + tokmak
-        float gx = 2.6f, gy = 0.9f;
+        float gx = 2.6f, gy = S;
         Gfx.Box("Gong_Dikme", t, new Vector3(gx - 1.0f, gy + 1.15f, zc), new Vector3(0.14f, 2.3f, 0.14f), wood, true);
         Gfx.Box("Gong_Dikme", t, new Vector3(gx + 1.0f, gy + 1.15f, zc), new Vector3(0.14f, 2.3f, 0.14f), wood, true);
         Gfx.Box("Gong_Kiris", t, new Vector3(gx, gy + 2.3f, zc), new Vector3(2.3f, 0.16f, 0.18f), wood);
@@ -77,7 +83,7 @@ public class Podium : MonoBehaviour
         // Konuşmacı (borsa yönetimi temsilcisi)
         var host = new GameObject("Konusmaci");
         host.transform.SetParent(t, false);
-        host.transform.localPosition = new Vector3(-1.6f, 0.9f, zc + 0.15f);
+        host.transform.localPosition = new Vector3(-1.6f, S, zc + 0.15f);
         host.transform.localRotation = Quaternion.LookRotation(Vector3.back);
         host.layer = 2;
         var lc = host.AddComponent<LazyChar>();
@@ -93,7 +99,7 @@ public class Podium : MonoBehaviour
         // Spot ışığı sahneye
         var lg = new GameObject("Kursu_Isik");
         lg.transform.SetParent(t, false);
-        lg.transform.localPosition = new Vector3(0, 6f, zc - 4f);
+        lg.transform.localPosition = new Vector3(0, S + 5.2f, zc - 4f);
         lg.transform.localRotation = Quaternion.Euler(52, 0, 0);
         var l = lg.AddComponent<Light>();
         l.type = LightType.Spot;
@@ -155,6 +161,8 @@ public class Podium : MonoBehaviour
         float st = Time.time - swingT;
         if (gong != null)
             gong.localRotation = st < 6f ? Quaternion.Euler(Mathf.Sin(st * 7f) * 9f * Mathf.Exp(-st * 0.9f), 0, 0) : Quaternion.identity;
+
+        if (Time.time >= nextBoard) RefreshMovers();
 
         if (bubble != null && bubble.gameObject.activeSelf && Time.time > bubbleUntil) bubble.gameObject.SetActive(false);
     }
@@ -253,5 +261,83 @@ public class Podium : MonoBehaviour
             col += w.Length;
         }
         return sb.ToString();
+    }
+
+    // ---------------------------------------------------------------- Sahne önündeki marka panosu
+
+    class Row { public long id = -1; public Renderer logo; public TextMesh initials, name, value; }
+    readonly Row[][] cols = new Row[3][];
+    float nextBoard = 1f;
+    const int Rows = 4;
+
+    /// <summary>Sahnenin ön yüzüne üç sütunlu pano: en çok işlem gören markalardan yükselenler, en çok işlem görenler, düşenler.</summary>
+    void BuildMovers(Transform t, float z, float top)
+    {
+        float bottom = 0.1f, h = top - bottom;
+        Gfx.Box("Pano", t, new Vector3(0, bottom + h / 2f, z + 0.015f), new Vector3(10.8f, h, 0.03f), Gfx.Lit(new Color(0.015f, 0.02f, 0.03f), 0.9f));
+        Gfx.Box("Pano_Cerceve", t, new Vector3(0, top + 0.02f, z), new Vector3(10.9f, 0.04f, 0.05f), Gfx.Glow(new Color(1f, 0.78f, 0.3f)));
+        string[] heads = { Loc.T("▲ YÜKSELENLER"), Loc.T("EN ÇOK İŞLEM GÖRENLER"), Loc.T("▼ DÜŞENLER") };
+        Color[] hc = { new Color(0.25f, 0.9f, 0.45f), new Color(1f, 0.8f, 0.3f), new Color(1f, 0.35f, 0.35f) };
+        float rowH = (h - 0.36f) / Rows;
+        for (int c = 0; c < 3; c++)
+        {
+            float cx = (c - 1) * 3.6f;
+            Gfx.Text("Pano_Baslik", t, new Vector3(cx, top - 0.17f, z - 0.01f), Quaternion.identity, heads[c], 0.15f, hc[c]);
+            if (c > 0) Gfx.Box("Pano_Ayrac", t, new Vector3(cx - 1.8f, bottom + h / 2f, z - 0.005f), new Vector3(0.02f, h - 0.1f, 0.01f), Gfx.Glow(new Color(0.4f, 0.32f, 0.15f)));
+            cols[c] = new Row[Rows];
+            for (int r = 0; r < Rows; r++)
+            {
+                float y = top - 0.36f - rowH * (r + 0.5f);
+                var row = new Row();
+                var q = Gfx.Prim(PrimitiveType.Quad, "Pano_Logo", t, new Vector3(cx - 1.42f, y, z - 0.01f), new Vector3(rowH * 0.82f, rowH * 0.82f, 1f), Gfx.Lit(Color.grey, 0.2f), false);
+                row.logo = q.GetComponent<Renderer>();
+                row.initials = Gfx.Text("Pano_Harf", t, new Vector3(cx - 1.42f, y, z - 0.02f), Quaternion.identity, "", 0.09f, Color.white);
+                row.name = Gfx.Text("Pano_Ad", t, new Vector3(cx - 1.18f, y, z - 0.01f), Quaternion.identity, "", 0.12f, Color.white, TextAnchor.MiddleLeft, TextAlignment.Left);
+                row.value = Gfx.Text("Pano_Deger", t, new Vector3(cx + 1.65f, y, z - 0.01f), Quaternion.identity, "", 0.12f, hc[c], TextAnchor.MiddleRight, TextAlignment.Right);
+                q.SetActive(false);
+                cols[c][r] = row;
+            }
+        }
+    }
+
+    void RefreshMovers()
+    {
+        nextBoard = Time.time + 20f;
+        if (cols[0] == null || Market.I == null || Market.I.stocks == null || Market.I.stocks.Count == 0) return;
+        // En çok işlem görenler (hacim); yükselen/düşenler bunların arasından seçilir
+        var top = new List<Stock>(Market.I.stocks);
+        top.Sort((a, b) => b.volume.CompareTo(a.volume));
+        if (top.Count > 12) top.RemoveRange(12, top.Count - 12);
+        var up = top.FindAll(s => s.change > 0.05);
+        up.Sort((a, b) => b.change.CompareTo(a.change));
+        var down = top.FindAll(s => s.change < -0.05);
+        down.Sort((a, b) => a.change.CompareTo(b.change));
+        Fill(cols[0], up, s => Fmt.Pct(s.change));
+        Fill(cols[1], top, s => Fmt.Short(s.volume));
+        Fill(cols[2], down, s => Fmt.Pct(s.change));
+    }
+
+    static void Fill(Row[] rows, List<Stock> list, System.Func<Stock, string> val)
+    {
+        for (int r = 0; r < rows.Length; r++)
+        {
+            var row = rows[r];
+            var s = r < list.Count ? list[r] : null;
+            row.logo.gameObject.SetActive(s != null);
+            row.name.text = s == null ? (r == 0 ? "—" : "") : (s.name.Length > 16 ? s.name.Substring(0, 15) + "…" : s.name);
+            row.value.text = s == null ? "" : val(s);
+            if (s == null) { row.initials.text = ""; row.id = -1; continue; }
+            if (row.id == s.id) continue;
+            row.id = s.id;
+            row.initials.text = LogoCache.Initials(s.name);
+            row.logo.sharedMaterial = Gfx.Lit(LogoCache.BadgeColor(s.name), 0.2f);
+            long id = s.id;
+            if (LogoCache.I) LogoCache.I.Get(id, tex =>
+            {
+                if (row.logo == null || row.id != id || tex == null) return;
+                row.logo.sharedMaterial = Gfx.Texture(tex);
+                row.initials.text = "";
+            });
+        }
     }
 }

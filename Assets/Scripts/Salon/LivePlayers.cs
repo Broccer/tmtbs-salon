@@ -116,7 +116,8 @@ public class LivePlayers : MonoBehaviour
             string id = J.S(o, "sid");
             if (string.IsNullOrEmpty(id)) continue;
             seen.Add(id);
-            var pos = new Vector3((float)J.D(o, "x"), 0f, (float)J.D(o, "z"));
+            float px = (float)J.D(o, "x"), pz = (float)J.D(o, "z");
+            var pos = new Vector3(px, SalonBuilder.GroundY(px, pz), pz); // salon -1. katta
             float ry = (float)J.D(o, "ry");
             if (!remotes.TryGetValue(id, out var r))
             {

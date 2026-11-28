@@ -37,7 +37,7 @@ public partial class SalonDirector : MonoBehaviour
         player.StandUp();
         player.SetFrozen(true);
         player.transform.localScale = Vector3.one * 1.6f;
-        player.Teleport(new Vector3(0f, 0, -6f), Quaternion.Euler(0, 180f, 0));
+        player.Teleport(new Vector3(0f, SalonBuilder.FloorY, -6f), Quaternion.Euler(0, 180f, 0));
     }
 
     void Start()
@@ -90,12 +90,12 @@ public partial class SalonDirector : MonoBehaviour
         if (tm)
         {
             // Trade of MTBS hesabı: yalnız borsa salonu
-            player.Teleport(new Vector3(0, 0, -SalonBuilder.HalfD + 6f), Quaternion.identity);
+            player.Teleport(new Vector3(0, 0, -SalonBuilder.HalfD + 3.2f), Quaternion.identity); // giriş katı, merdiven başı
             chase.Snap();
             fadeUntil = Time.time + 1.5f;
             gateAgain = Time.time + 3f;
             Show(T("Trade of MTBS · Seans salonu"), 3f);
-            Hint(T("Bankolara yaklaş ve al-sat. Arkada solda MTBS Bankası veznesi, sağda sıralama duvarları ve çalışma masaları var."), 8f);
+            Hint(T("Merdivenden seans salonuna in. Bankolarda al-sat; arkada solda MTBS Bankası müşteri temsilcileri, sağda sıralama duvarları ve çalışma masaları var."), 8f);
             return;
         }
         player.Teleport(Town.HomeSpawn, Town.HomeFacing);
@@ -159,10 +159,11 @@ public partial class SalonDirector : MonoBehaviour
         WorldUpdate();
         chase.seated = player.SittingOn != null;
         chase.focus = player.SittingOn != null ? player.SittingOn.focus : null;
+        if (chase.focus != null) chase.focusCam = player.SittingOn.camLocal;
         // Masada: kamera ekrana yaklaşınca panel açılır; panel kapanınca kalkılır
         if (player.SittingOn != null && player.SittingOn.focus != null)
         {
-            if (deskOpenAt > 0f && Time.time >= deskOpenAt) { deskOpenAt = 0f; OpenDesk(); }
+            if (deskOpenAt > 0f && Time.time >= deskOpenAt) { deskOpenAt = 0f; if (player.SittingOn.bank) OpenBankDesk(); else OpenDesk(); }
             else if (deskOpenAt <= 0f && panel == Panel.None) player.StandUp();
         }
         else deskOpenAt = 0f;
@@ -241,7 +242,12 @@ public partial class SalonDirector : MonoBehaviour
             case Interactable.Kind.Computer: OpenPhone(true); break;
             case Interactable.Kind.Seat when it.seat != null && it.seat.focus != null:
                 player.Sit(it.seat);
-                deskOpenAt = Time.time + 0.9f;
+                deskOpenAt = Time.time + (it.seat.bank ? 2.2f : 0.9f);
+                if (it.seat.bank && it.seat.speech != null)
+                {
+                    it.seat.speech.text = SalonBuilder.BankSpeech();
+                    it.seat.speech.gameObject.SetActive(true);
+                }
                 break;
             case Interactable.Kind.Seat:
                 player.Sit(it.seat);

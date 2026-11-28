@@ -68,6 +68,7 @@ public class Walker : MonoBehaviour
         {
             if (it.kind == Interactable.Kind.Counter && (it.counter == null || it.counter.stock == null)) continue;
             if (it.kind == Interactable.Kind.Seat && it.seat != null && it.seat.taken) continue;
+            if (Mathf.Abs(it.Point.y - me.y) > 1.8f) continue; // başka kattaki (sahanlık / alt kat) şeyler sayılmaz
             Vector3 to = (it.Point - me).Flat();
             float d = to.magnitude;
             if (d > it.range) continue;
@@ -112,6 +113,7 @@ public class Walker : MonoBehaviour
         if (s == null) return;
         SittingOn = null;
         s.taken = false;
+        if (s.speech != null) s.speech.text = s.idleSpeech;
         var ca = GetComponent<CharAnim>();
         if (ca != null) ca.sitting = false;
         Teleport(s.transform.TransformPoint(new Vector3(0, 0, -0.9f)), s.SitRotation); // sandalyenin arkasına (masa önde)

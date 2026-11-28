@@ -363,9 +363,9 @@ public partial class SalonDirector
     void TmTravel()
     {
         GUILayout.Label(T("Salonun içinde hızlı git:"), small);
-        if (GUILayout.Button(T("Panoların önü"), btn, GUILayout.Height(42))) { GoTo(new Vector3(0, 0, SalonBuilder.HalfD - 7f), Quaternion.identity); Show(T("Seans salonu"), 1.5f); }
-        if (GUILayout.Button(T("Peron A"), btn, GUILayout.Height(42))) { GoTo(new Vector3(-BotTrader.Lane, 0, 0), Quaternion.identity); Show(T("Peron A"), 1.5f); }
-        if (GUILayout.Button(T("Peron B"), btn, GUILayout.Height(42))) { GoTo(new Vector3(BotTrader.Lane, 0, 0), Quaternion.identity); Show(T("Peron B"), 1.5f); }
+        if (GUILayout.Button(T("Panoların önü"), btn, GUILayout.Height(42))) { GoTo(new Vector3(0, SalonBuilder.FloorY, SalonBuilder.HalfD - 7f), Quaternion.identity); Show(T("Seans salonu"), 1.5f); }
+        if (GUILayout.Button(T("Peron A"), btn, GUILayout.Height(42))) { GoTo(new Vector3(-BotTrader.Lane, SalonBuilder.FloorY, 0), Quaternion.identity); Show(T("Peron A"), 1.5f); }
+        if (GUILayout.Button(T("Peron B"), btn, GUILayout.Height(42))) { GoTo(new Vector3(BotTrader.Lane, SalonBuilder.FloorY, 0), Quaternion.identity); Show(T("Peron B"), 1.5f); }
         if (GUILayout.Button(T("MTBS Bankası veznesi"), btn, GUILayout.Height(42))) { GoTo(SalonBuilder.VezneSpot, Quaternion.LookRotation(Vector3.back)); Show(T("Vezne"), 1.5f); }
         if (GUILayout.Button(T("Sıralama ve çalışma masaları"), btn, GUILayout.Height(42))) { GoTo(SalonBuilder.DeskSpot, Quaternion.LookRotation(Vector3.back)); Show(T("Sıralama ve çalışma masaları"), 1.5f); }
         if (GUILayout.Button(T("Salon kapısı · şehre çıkış"), btn, GUILayout.Height(42))) { GoTo(new Vector3(0, 0, -SalonBuilder.HalfD + 4.5f), Quaternion.LookRotation(Vector3.back)); gateAgain = Time.time + 1f; }
@@ -412,7 +412,7 @@ public partial class SalonDirector
 
     void DrawGate()
     {
-        float w = Mathf.Min(460, W - 16), h = 400;
+        float w = Mathf.Min(460, W - 16), h = 450;
         var r = new Rect((W - w) / 2, Mathf.Max(8, (H - h) / 2), w, h);
         BeginPanel(r);
         GUILayout.Label(T("Şehir Müteşebbis'in dünyası"), h2);
@@ -432,6 +432,10 @@ public partial class SalonDirector
             return;
         }
         GUI.backgroundColor = SalonDirector.BtnBase;
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button(T("Google Play"), btn, GUILayout.Height(40))) Application.OpenURL(SalonBuilder.MtPlayUrl);
+        if (GUILayout.Button(T("App Store"), btn, GUILayout.Height(40))) Application.OpenURL(SalonBuilder.MtAppStoreUrl);
+        GUILayout.EndHorizontal();
         if (GUILayout.Button(T("mutesebbis.tr'de üye ol"), btn, GUILayout.Height(40))) Application.OpenURL("https://mutesebbis.tr/register");
         if (GUILayout.Button(T("Salona dön"), GUILayout.Height(38)))
         {
