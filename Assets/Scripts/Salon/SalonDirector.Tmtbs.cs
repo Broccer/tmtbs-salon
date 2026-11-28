@@ -470,14 +470,14 @@ public partial class SalonDirector
     void SocialButtons()
     {
         GUI.backgroundColor = SalonDirector.BtnBase;
-        if (GUILayout.Button(T("<b>G</b>  Google ile devam et"), btn, GUILayout.Height(40)))
+        if (SocialLogin.GoogleAvailable && GUILayout.Button(T("<b>G</b>  Google ile devam et"), btn, GUILayout.Height(40)))
         {
             formMsg = T("Google penceresi açılıyor…");
             formErr = false;
             SocialLogin.Begin("google");
         }
         GUI.backgroundColor = new Color(0.25f, 0.25f, 0.28f);
-        if (GUILayout.Button(T("<color=white><b>Apple</b> ile devam et</color>"), btn, GUILayout.Height(40)))
+        if (SocialLogin.AppleAvailable && GUILayout.Button(T("<color=white><b>Apple</b> ile devam et</color>"), btn, GUILayout.Height(40)))
         {
             formMsg = T("Apple penceresi açılıyor…");
             formErr = false;

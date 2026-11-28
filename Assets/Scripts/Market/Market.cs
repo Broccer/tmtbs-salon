@@ -142,8 +142,15 @@ public class Market : MonoBehaviour
     /// <summary>TMTBS: Google / Apple kimlik jetonuyla giriş (hesap yoksa açılır).</summary>
     public void SocialLoginTm(string provider, string token, string name, Action<string> done)
     {
-        var body = provider == "apple" ? Body("identity_token", token, "adsoyad", name ?? "", "cihaz", "dunya-webgl")
-                                       : Body("id_token", token, "adsoyad", name ?? "", "cihaz", "dunya-webgl");
+#if UNITY_ANDROID
+        const string cihaz = "dunya-android";
+#elif UNITY_IOS
+        const string cihaz = "dunya-ios";
+#else
+        const string cihaz = "dunya-webgl";
+#endif
+        var body = provider == "apple" ? Body("identity_token", token, "adsoyad", name ?? "", "cihaz", cihaz)
+                                       : Body("id_token", token, "adsoyad", name ?? "", "cihaz", cihaz);
         Api.I.Post("/tmtbs/auth/" + (provider == "apple" ? "apple" : "google"), body,
             r => { SetAccount(Account.Tmtbs); AcceptLogin(r); done(null); }, (m, c) => done(m));
     }

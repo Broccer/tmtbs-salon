@@ -44,6 +44,8 @@ public static class AndroidBuild
         PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel24;
         PlayerSettings.Android.targetSdkVersion = (AndroidSdkVersions)35;
         PlayerSettings.Android.forceInternetPermission = true;
+        // GameActivity'de TouchScreenKeyboard (e-posta/şifre kutuları) güvenilir açılmıyor: klasik Activity.
+        PlayerSettings.Android.applicationEntry = AndroidApplicationEntry.Activity;
         PlayerSettings.Android.renderOutsideSafeArea = false;
         string code = WebGLBuild.ArgValue("-androidVersionCode");
         if (int.TryParse(code, out int vc)) PlayerSettings.Android.bundleVersionCode = vc;

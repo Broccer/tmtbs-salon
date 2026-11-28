@@ -71,8 +71,14 @@ public class HtmlInput : MonoBehaviour
         // Mağaza sürümü: telefonun kendi klavyesi
         try
         {
+            if (kb != null) { kb.active = false; kb = null; }
             kbId = id;
-            kb = TouchScreenKeyboard.Open(value, numeric ? TouchScreenKeyboardType.NumberPad : TouchScreenKeyboardType.Default, false, false, password, false, title);
+            TouchScreenKeyboard.hideInput = false; // Android'de klavyenin üstünde yazılanı gösteren kutu kalsın
+            var type = numeric ? TouchScreenKeyboardType.NumberPad
+                     : id.StartsWith("eposta", StringComparison.Ordinal) ? TouchScreenKeyboardType.EmailAddress
+                     : TouchScreenKeyboardType.Default;
+            kb = TouchScreenKeyboard.Open(value ?? "", type, false, false, password, false, title ?? "");
+            kbText = value ?? "";
             Open_ = kb != null;
         }
         catch (Exception e) { Debug.LogWarning(e); Open_ = false; kb = null; }
@@ -81,14 +87,19 @@ public class HtmlInput : MonoBehaviour
 
 #if UNITY_ANDROID || UNITY_IOS
     static TouchScreenKeyboard kb;
-    static string kbId;
+    static string kbId, kbText;
 
     void Update()
     {
         if (kb == null) return;
         var st = kb.status;
-        if (st == TouchScreenKeyboard.Status.Visible) return;
-        if (st == TouchScreenKeyboard.Status.Done) results[kbId] = kb.text ?? "";
+        if (st == TouchScreenKeyboard.Status.Visible)
+        {
+            kbText = kb.text ?? kbText; // yazıldıkça sakla: klavye "Tamam" dışında kapanırsa da kaybolmasın
+            return;
+        }
+        // Done: Tamam. LostFocus: dışarı dokunuldu/geri tuşu — yazılanı yine al. Canceled: vazgeçildi.
+        if (st != TouchScreenKeyboard.Status.Canceled) results[kbId] = kb.text ?? kbText ?? "";
         kb = null;
         Open_ = false;
     }

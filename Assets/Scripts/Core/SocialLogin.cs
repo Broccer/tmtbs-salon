@@ -3,32 +3,101 @@ using System.Runtime.InteropServices;
 using UnityEngine;
 
 /// <summary>
-/// Trade of MTBS hesabı için Google / Apple ile giriş köprüsü (Social.jslib). Sonuç <see cref="Received"/> ile gelir:
-/// (sağlayıcı, kimlik jetonu, ad, hata). Açılır pencere engellenip sayfa yönlendirildiyse dönüşte bekleyen sonuç okunur.
+/// Trade of MTBS hesabı için Google / Apple ile giriş (Trade of MTBS uygulamasıyla aynı sunucu uçları).
+/// Web: Social.jslib (mutesebbis.tr köprü sayfası). Android: Credential Manager ile Google (Plugins/Android/SocialAuth.androidlib).
+/// iOS: Apple (ASAuthorization) + Google (ASWebAuthenticationSession, PKCE) — Plugins/iOS/SocialAuth.mm.
+/// Sonuç <see cref="Received"/> ile gelir: (sağlayıcı, kimlik jetonu, ad, hata). Hata "iptal" ise kullanıcı vazgeçmiştir.
 /// </summary>
 public class SocialLogin : MonoBehaviour
 {
+    /// <summary>Google web istemcisi (GCP projesi trade-of-mtbs). Android'de ID token'ın aud'u budur; sunucu kabul eder.</summary>
+    public const string GoogleServerClientId = "935868935496-9jca4ostje38297p4sc7k6tvj52c577n.apps.googleusercontent.com";
+
+    /// <summary>iOS OAuth istemcisi (Bundle ID com.bavsla.tmtbs3d). Boşsa iOS'ta Google düğmesi gizlenir.</summary>
+    public const string GoogleIosClientId = "935868935496-2gnpu0ub1g8b6sce7i19flfbsjm9npuc.apps.googleusercontent.com";
+
 #if UNITY_WEBGL && !UNITY_EDITOR
     [DllImport("__Internal")] static extern void SocialStart(string provider);
     [DllImport("__Internal")] static extern string SocialPending();
+#elif UNITY_IOS && !UNITY_EDITOR
+    [DllImport("__Internal")] static extern void TmSocialApple();
+    [DllImport("__Internal")] static extern void TmSocialGoogle(string iosClientId);
+    static void SocialStart(string provider)
+    {
+        if (provider == "apple") TmSocialApple();
+        else TmSocialGoogle(GoogleIosClientId);
+    }
+    static string SocialPending() => null;
+#elif UNITY_ANDROID && !UNITY_EDITOR
+    static void SocialStart(string provider)
+    {
+        if (provider != "google") { Deliver(provider, "", "", "Bu cihazda desteklenmiyor"); return; }
+        try
+        {
+            using var up = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
+            var act = up.GetStatic<AndroidJavaObject>("currentActivity");
+            using var cls = new AndroidJavaClass("com.bavsla.social.SocialAuth");
+            cls.CallStatic("google", act, GoogleServerClientId, new AndroidCallback());
+        }
+        catch (Exception e) { Deliver("google", "", "", e.Message); }
+    }
+    static string SocialPending() => null;
+
+    class AndroidCallback : AndroidJavaProxy
+    {
+        public AndroidCallback() : base("com.bavsla.social.SocialAuth$Callback") { }
+        // Java tarafında arka iş parçacığından çağrılır: ana iş parçacığına Update'te aktarılır.
+        public void onResult(string provider, string token, string name, string error) => Deliver(provider, token, name, error);
+    }
 #else
-    static void SocialStart(string provider) { Debug.Log("Sosyal giriş yalnız WebGL'de: " + provider); }
+    static void SocialStart(string provider) { Deliver(provider, "", "", "Sosyal giriş bu platformda yok"); }
     static string SocialPending() => null;
 #endif
 
-#if UNITY_WEBGL
+#if UNITY_WEBGL || UNITY_ANDROID
+    public const bool Available = true;
+#elif UNITY_IOS
     public const bool Available = true;
 #else
-    public const bool Available = false; // mağaza sürümünde yerel Google/Apple girişi henüz yok: e-posta ve misafir
+    public const bool Available = false;
 #endif
+
+    /// <summary>Google düğmesi gösterilsin mi (iOS'ta istemci kimliği tanımlıysa).</summary>
+    public static bool GoogleAvailable
+    {
+        get
+        {
+#if UNITY_IOS
+            return GoogleIosClientId.Length > 0;
+#else
+            return Available;
+#endif
+        }
+    }
+
+    /// <summary>Apple ile giriş yalnız web ve iOS'ta (Trade of MTBS uygulamasında olduğu gibi Android'de yok).</summary>
+    public static bool AppleAvailable
+    {
+        get
+        {
+#if UNITY_WEBGL || UNITY_IOS
+            return true;
+#else
+            return false;
+#endif
+        }
+    }
+
     public static SocialLogin I { get; private set; }
     public static event Action<string, string, string, string> Received;
     static string pending;
+    static readonly object gate = new object();
+    static string queued;
 
     public static void Ensure()
     {
         if (I != null) return;
-        var g = new GameObject("SocialLogin"); // jslib bu adla SendMessage yapar
+        var g = new GameObject("SocialLogin"); // jslib / iOS eklentisi bu adla SendMessage yapar
         DontDestroyOnLoad(g);
         I = g.AddComponent<SocialLogin>();
         try { pending = SocialPending(); } catch { pending = null; }
@@ -48,6 +117,19 @@ public class SocialLogin : MonoBehaviour
     {
         Ensure();
         SocialStart(provider);
+    }
+
+    /// <summary>Herhangi bir iş parçacığından sonucu sıraya koyar; Update'te ana iş parçacığında dağıtılır.</summary>
+    static void Deliver(string provider, string token, string name, string error)
+    {
+        lock (gate) queued = string.Join("\u0001", provider ?? "", token ?? "", name ?? "", error ?? "");
+    }
+
+    void Update()
+    {
+        string m;
+        lock (gate) { m = queued; queued = null; }
+        if (m != null) OnSocial(m);
     }
 
     static void Split(string msg, out string provider, out string token, out string name, out string error)
