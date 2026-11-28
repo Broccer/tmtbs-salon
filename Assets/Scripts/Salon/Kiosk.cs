@@ -32,6 +32,23 @@ public class Kiosk : MonoBehaviour
     float chartAt = -999f;
     bool chartBusy;
     const float ChartRefresh = 180f, ChartRange = 14f;
+    public string range = "7g";
+    public readonly List<ChartRangeButton> rangeButtons = new List<ChartRangeButton>();
+
+    /// <summary>Grafik aralığını değiştirir ve hemen yeniden çeker.</summary>
+    public void SetRange(string r)
+    {
+        if (range == r) return;
+        range = r;
+        PaintRange();
+        chartAt = -999f;
+        if (!chartBusy && stock != null) LoadChart();
+    }
+
+    public void PaintRange()
+    {
+        foreach (var b in rangeButtons) b.Paint(b.key == range);
+    }
     static readonly Color ChartBg = new Color(0.035f, 0.05f, 0.08f, 1f);
 
     void OnEnable() { All.Add(this); }
@@ -88,7 +105,11 @@ public class Kiosk : MonoBehaviour
         k.chartQuad = cq.GetComponent<Renderer>();
         k.chartHi = Gfx.Text("Grafik_Ust", t, new Vector3(1.04f, 2.66f, wz + 0.085f), back, "", 0.07f, new Color(0.8f, 0.84f, 0.9f), TextAnchor.MiddleLeft, TextAlignment.Left);
         k.chartLo = Gfx.Text("Grafik_Alt", t, new Vector3(1.04f, 1.74f, wz + 0.085f), back, "", 0.07f, new Color(0.8f, 0.84f, 0.9f), TextAnchor.MiddleLeft, TextAlignment.Left);
-        Gfx.Text("Grafik_Not", t, new Vector3(-1.04f, 2.66f, wz + 0.085f), back, Loc.T("7 gün"), 0.07f, Gold, TextAnchor.MiddleRight, TextAlignment.Right);
+        // Grafik aralığı: tıklanabilir 1 gün / 7 gün / 1 ay / 1 yıl (salondan bakınca sağ üstte)
+        string[] keys = { "1g", "7g", "1a", "1y" }, names = { "1 gün", "7 gün", "1 ay", "1 yıl" };
+        for (int i = 0; i < keys.Length; i++)
+            k.rangeButtons.Add(ChartRangeButton.Create(k, t, keys[i], Loc.T(names[i]), new Vector3(-0.98f + i * 0.27f, 2.64f, wz + 0.09f), back));
+        k.PaintRange();
         Gfx.Box("Tabela", t, new Vector3(0, 3.75f, wz + 0.06f), new Vector3(2.36f, 1.7f, 0.08f), Gfx.Lit(Panel, 0.85f));
         var edge = Gfx.Box("Tabela_Cerceve", t, new Vector3(0, 4.63f, wz + 0.08f), new Vector3(2.4f, 0.07f, 0.08f), Gfx.Glow(Color.grey));
         k.signEdge = edge.GetComponent<Renderer>();
@@ -210,10 +231,12 @@ public class Kiosk : MonoBehaviour
         chartBusy = true;
         chartAt = Time.time;
         long id = stock.id;
+        string want = range;
         System.Action<Dictionary<string, object>, string> done = (r, err) =>
         {
             chartBusy = false;
             if (this == null || stock == null || stock.id != id) return;
+            if (want != range) { chartAt = -999f; return; } // bu arada aralık değişti: sonraki karede yenisi çekilir
             var g = r != null ? J.O(r, "grafik") : null;
             var pts = g != null ? J.A(g, "noktalar") : null;
             if (pts == null || pts.Count < 2)
@@ -228,11 +251,10 @@ public class Kiosk : MonoBehaviour
             Set(chartHi, Fmt.N2(hi));
             Set(chartLo, Fmt.N2(lo));
         };
-        const string range = "7g";
         if (Market.I.Live)
-            Market.I.Get((Market.I.Tm ? "/tmtbs/hisse/" + id + "/grafik?aralik=" : "/dunya/grafik/" + id + "?aralik=") + range, done);
+            Market.I.Get((Market.I.Tm ? "/tmtbs/hisse/" + id + "/grafik?aralik=" : "/dunya/grafik/" + id + "?aralik=") + want, done);
         else if (Api.I != null) // demo/misafir: girişsiz herkese açık grafik
-            Api.I.Get("/tmtbs/vitrin/grafik/" + id + "?aralik=" + range, r => done(r, null), (m, c) => done(null, m));
+            Api.I.Get("/tmtbs/vitrin/grafik/" + id + "?aralik=" + want, r => done(r, null), (m, c) => done(null, m));
         else chartBusy = false;
     }
 
@@ -292,5 +314,35 @@ public class KioskButton : MonoBehaviour
         float dip = a < 0.25f ? Mathf.Sin(a / 0.25f * Mathf.PI) * 0.035f : 0f;
         cap.localPosition = capPos + Vector3.down * dip;
         if (label) label.localPosition = labelPos + Vector3.down * dip;
+    }
+}
+
+/// <summary>Banko grafiğinin aralık düğmesi (1 gün / 7 gün / 1 ay / 1 yıl): tıklanınca grafik o aralıkla yenilenir.</summary>
+public class ChartRangeButton : MonoBehaviour
+{
+    public Kiosk kiosk;
+    public string key;
+    Renderer bg;
+    TextMesh label;
+    static readonly Color On = new Color(1f, 0.80f, 0.30f), Off = new Color(0.16f, 0.19f, 0.26f);
+
+    public static ChartRangeButton Create(Kiosk k, Transform parent, string key, string text, Vector3 pos, Quaternion textRot)
+    {
+        var g = Gfx.Box("Aralik_" + key, parent, pos, new Vector3(0.25f, 0.11f, 0.02f), Gfx.Lit(Off, 0.3f));
+        var col = g.AddComponent<BoxCollider>();
+        col.isTrigger = true;
+        col.size = new Vector3(1.1f, 1.4f, 4f); // biraz büyük: uzaktan da tutturulsun
+        var b = g.AddComponent<ChartRangeButton>();
+        b.kiosk = k;
+        b.key = key;
+        b.bg = g.GetComponent<Renderer>();
+        b.label = Gfx.Text("Yazi", parent, pos + new Vector3(0, 0, 0.015f), textRot, text, 0.055f, Color.white);
+        return b;
+    }
+
+    public void Paint(bool active)
+    {
+        if (bg) bg.sharedMaterial = active ? Gfx.Glow(On * 0.85f) : Gfx.Lit(Off, 0.3f);
+        if (label) label.color = active ? new Color(0.05f, 0.05f, 0.08f) : new Color(0.85f, 0.88f, 0.95f);
     }
 }

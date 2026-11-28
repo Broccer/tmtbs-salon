@@ -174,12 +174,22 @@ public partial class SalonDirector : MonoBehaviour
             var ray = Camera.main.ScreenPointToRay(sp);
             // Bankonun AL / SAT düğmesi bankonun çarpışma kutusunun içinde kalır: ışının değdiği her şeye bak
             KioskButton kb = null;
+            ChartRangeButton rb = null;
+            float rbDist = 0f;
             foreach (var h in Physics.RaycastAll(ray, 60f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Collide))
             {
                 var b = h.collider.GetComponent<KioskButton>();
                 if (b != null && (kb == null || h.distance < kbDist)) { kb = b; kbDist = h.distance; }
+                var cr = h.collider.GetComponent<ChartRangeButton>();
+                if (cr != null && (rb == null || h.distance < rbDist)) { rb = cr; rbDist = h.distance; }
             }
-            if (kb != null && kb.kiosk != null && kb.kiosk.stock != null)
+            if (rb != null && rb.kiosk != null && (kb == null || rbDist < kbDist))
+            {
+                float d = (rb.kiosk.StandPoint() - player.transform.position).Flat().magnitude;
+                if (d < 9f) { rb.kiosk.SetRange(rb.key); if (Bell.I) Bell.I.Tick(); }
+                else Show(T("Önce bankoya yaklaş"), 1.2f);
+            }
+            else if (kb != null && kb.kiosk != null && kb.kiosk.stock != null)
             {
                 float d = (kb.kiosk.StandPoint() - player.transform.position).Flat().magnitude;
                 if (d < 7f) { kb.Press(); OpenTrade(kb.kiosk.stock, kb.buy); }
