@@ -119,8 +119,8 @@ public class Podium : MonoBehaviour
 
     void Start()
     {
-        gongClip = SoundSynth.Gong();
-        chimeClip = SoundSynth.Chime();
+        gongClip = Sfx.Get("gong");
+        chimeClip = Sfx.Get("duyuru");
         SetStrip(Loc.T("Trade of MTBS borsasına hoş geldiniz · Seans açık · İyi işlemler!"));
     }
 

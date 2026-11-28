@@ -1,19 +1,22 @@
 using UnityEngine;
 
-/// <summary>Seans zili ve küçük efektler; ses dosyası gerekmez, kodla üretilir.</summary>
+/// <summary>Seans zili ve küçük efektler: gerçek kayıtlar (Sfx); dosya yoksa kodla üretilen yedek ses çalar.</summary>
 public class Bell : MonoBehaviour
 {
     public static Bell I { get; private set; }
     AudioSource src;
-    AudioClip bell, tick;
+    AudioClip bell, tick, money;
 
     void Awake()
     {
         I = this;
         src = gameObject.AddComponent<AudioSource>();
         src.playOnAwake = false;
-        bell = Make("zil", 2.2f, new[] { 523.25f, 1046.5f, 1567.98f, 2093f }, new[] { 1f, 0.6f, 0.35f, 0.2f }, 1.6f);
-        tick = Make("tik", 0.12f, new[] { 1760f }, new[] { 1f }, 30f);
+        bell = Sfx.Get("zil");
+        tick = Sfx.Get("tik");
+        money = Sfx.Get("para");
+        if (bell == null) bell = Make("zil", 2.2f, new[] { 523.25f, 1046.5f, 1567.98f, 2093f }, new[] { 1f, 0.6f, 0.35f, 0.2f }, 1.6f);
+        if (tick == null) tick = Make("tik", 0.12f, new[] { 1760f }, new[] { 1f }, 30f);
     }
 
     static AudioClip Make(string name, float seconds, float[] freqs, float[] amps, float decay)
@@ -34,5 +37,7 @@ public class Bell : MonoBehaviour
     }
 
     public void Ring() { if (src) src.PlayOneShot(bell, 0.9f); }
-    public void Tick() { if (src) src.PlayOneShot(tick, 0.4f); }
+    public void Tick() { if (src) src.PlayOneShot(tick, 0.5f); }
+    /// <summary>Emir gerçekleşti / para geldi.</summary>
+    public void Money() { if (src) src.PlayOneShot(money != null ? money : tick, 0.7f); }
 }

@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Borsa salonunun sesleri: sürekli kalabalık uğultusu (iki katman), bankolardan ve botlardan gelen
-/// borsacı çağrıları, çalan telefonlar, tabela bip'leri; piyasa sert hareket edince salon coşar.
-/// Salonun dışında (koridor, şehir) uğultu kısılır. Sesler kodla üretilir (SoundSynth).
+/// Borsa salonunun sesleri: gerçek kalabalık kaydı (iki katman, farklı yerden başlar), çalan telefonlar,
+/// bankolardan tabela bip'leri; piyasa sert hareket edince uğultu yükselir. Salonun dışında uğultu kısılır.
+/// Kayıtlar Resources/Sounds'ta (Sfx). Eskiden kodla üretilen bağırış ve anons sesleri yapay durduğu için kaldırıldı.
 /// </summary>
 public class Ambience : MonoBehaviour
 {
@@ -14,7 +14,6 @@ public class Ambience : MonoBehaviour
 
     AudioSource bedA, bedB;
     readonly List<AudioSource> pool = new List<AudioSource>();
-    AudioClip[] shouts, announcers;
     AudioClip phone, beep;
     bool ready;
     float nextEvent, excite, nextPhone = 8f;
@@ -34,23 +33,22 @@ public class Ambience : MonoBehaviour
 
     IEnumerator Start()
     {
-        // Üretim birkaç kareye yayılır (açılışta takılma olmasın)
         yield return null;
-        var a = SoundSynth.Crowd(11, 10f, 16);
-        yield return null;
-        var b = SoundSynth.Crowd(29, 13f, 10);
-        yield return null;
-        shouts = new AudioClip[6];
-        for (int i = 0; i < shouts.Length; i++) { shouts[i] = SoundSynth.Shout(100 + i); if (i % 2 == 1) yield return null; }
-        announcers = new[] { SoundSynth.Announcer(7, 3.2f), SoundSynth.Announcer(8, 4.5f), SoundSynth.Announcer(9, 2.4f) };
-        yield return null;
-        phone = SoundSynth.Phone();
-        beep = SoundSynth.Beep();
+        var crowd = Sfx.Get("salon_ugultu");
+        phone = Sfx.Get("telefon");
+        beep = Sfx.Get("bip");
 
+        // Aynı kaydın iki katmanı: biri yarısından başlar, hafif farklı hızda — tekrar fark edilmesin
         bedA = gameObject.AddComponent<AudioSource>();
-        bedA.clip = a; bedA.loop = true; bedA.volume = 0f; bedA.spatialBlend = 0f; bedA.Play();
+        bedA.clip = crowd; bedA.loop = true; bedA.volume = 0f; bedA.spatialBlend = 0f;
         bedB = gameObject.AddComponent<AudioSource>();
-        bedB.clip = b; bedB.loop = true; bedB.volume = 0f; bedB.spatialBlend = 0f; bedB.pitch = 0.93f; bedB.Play();
+        bedB.clip = crowd; bedB.loop = true; bedB.volume = 0f; bedB.spatialBlend = 0f; bedB.pitch = 0.96f;
+        if (crowd != null)
+        {
+            bedA.Play();
+            bedB.Play();
+            bedB.time = crowd.length * 0.5f;
+        }
         for (int i = 0; i < 6; i++)
         {
             var g = new GameObject("Ses_" + i);
@@ -87,9 +85,9 @@ public class Ambience : MonoBehaviour
     {
         if (!ready) return;
         bool inside = InSalon();
-        float busy = 0.32f + 0.25f * excite;
+        float busy = 0.45f + 0.3f * excite;
         float tA = inside ? busy : 0.05f;
-        float tB = inside ? busy * 0.7f : 0.03f;
+        float tB = inside ? busy * 0.45f : 0.02f;
         bedA.volume = Mathf.MoveTowards(bedA.volume, tA, Time.deltaTime * 0.4f);
         bedB.volume = Mathf.MoveTowards(bedB.volume, tB, Time.deltaTime * 0.4f);
         excite = Mathf.MoveTowards(excite, 0f, Time.deltaTime * 0.05f);
@@ -97,13 +95,12 @@ public class Ambience : MonoBehaviour
         if (!inside) return;
         if (Time.time >= nextEvent)
         {
-            nextEvent = Time.time + Mathf.Lerp(2.6f, 0.9f, excite) * (0.6f + Random.value * 0.8f);
+            // Bankolarda ara ara tabela / kasa bip'i (piyasa hareketliyken sıklaşır)
+            nextEvent = Time.time + Mathf.Lerp(9f, 3f, excite) * (0.6f + Random.value * 0.8f);
             var src = Next();
             src.transform.position = RandomVoicePos();
-            src.pitch = 0.9f + Random.value * 0.25f;
-            float roll = Random.value;
-            if (roll < 0.72f) src.PlayOneShot(shouts[Random.Range(0, shouts.Length)], 0.55f + 0.35f * excite);
-            else src.PlayOneShot(beep, 0.35f);
+            src.pitch = 0.97f + Random.value * 0.06f;
+            if (beep) src.PlayOneShot(beep, 0.25f);
         }
         if (Time.time >= nextPhone)
         {
@@ -112,7 +109,7 @@ public class Ambience : MonoBehaviour
             var ks = Kiosk.All;
             src.transform.position = ks.Count > 0 ? ks[Random.Range(0, ks.Count)].transform.position + Vector3.up * 1.1f : player.position;
             src.pitch = 0.95f + Random.value * 0.1f;
-            src.PlayOneShot(phone, 0.5f);
+            if (phone) src.PlayOneShot(phone, 0.45f);
         }
     }
 
@@ -135,19 +132,14 @@ public class Ambience : MonoBehaviour
     /// <summary>Bir botun bağırışı (koşarak bankoya giderken).</summary>
     public void ShoutAt(Vector3 p)
     {
+        // Yapay bağırış kaldırıldı: koşuşturma anında salon uğultusu kısa süre yükselir.
         if (!ready || !InSalon()) return;
-        var src = Next();
-        src.transform.position = p;
-        src.pitch = 0.95f + Random.value * 0.2f;
-        src.PlayOneShot(shouts[Random.Range(0, shouts.Length)], 0.9f);
+        excite = Mathf.Min(1f, excite + 0.15f);
     }
 
     /// <summary>Kürsüden anons (hoparlör sesi); uzunluk yazının boyuna göre.</summary>
     public void Announce(AudioSource src, int textLen)
     {
-        if (!ready || announcers == null) return;
-        int i = textLen > 70 ? 1 : textLen > 40 ? 0 : 2;
-        src.spatialBlend = 0.55f; // hoparlör: salonun her yerinde duyulur, kürsüye yakınken daha net
-        src.PlayOneShot(announcers[i], 0.9f);
+        // Sahte konuşma sesi kaldırıldı; anons yazıyla (şerit + balon) ve kürsünün zil sesiyle verilir.
     }
 }

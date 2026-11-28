@@ -209,7 +209,7 @@ public partial class SalonDirector
             tradeBusy = false;
             tradeMsg = msg;
             tradeOk = ok;
-            if (ok && Bell.I) Bell.I.Tick();
+            if (ok && Bell.I) Bell.I.Money();
             if (ok && s != null) Market.I.LoadDetail(s, null, duel);
             if (ok) Market.I.RefreshStatus();
         };
