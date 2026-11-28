@@ -1016,7 +1016,7 @@ public partial class SalonDirector : MonoBehaviour
             }
             if (!HtmlInput.Touch)
                 GUI.Label(new Rect(14, H - 30, W - 28, 26),
-                    Market.I.Tm ? T("WASD yürü · Fareyle sürükle: kamera · Tekerlek: yakınlaş · Shift koş · E kullan (banko, vezne, düello) · M telefon · Esc kapat") : T("WASD yürü · Fareyle sürükle: kamera · Tekerlek: yakınlaş · Shift koş · E kullan / konuş (banko, vezne, durak, büfe, dükkân…) · M telefon · Esc kapat"), small);
+                    Market.I.Tm ? T("WASD yürü · Fareyle sürükle: kamera · Tekerlek: yakınlaş · Shift koş · E kullan (banko, vezne, masa) · M telefon · Esc kapat") : T("WASD yürü · Fareyle sürükle: kamera · Tekerlek: yakınlaş · Shift koş · E kullan / konuş (banko, vezne, durak, büfe, dükkân…) · M telefon · Esc kapat"), small);
         }
 
         if (panel == Panel.Trade) DrawTrade();

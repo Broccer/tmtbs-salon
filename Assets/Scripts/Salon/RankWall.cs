@@ -48,7 +48,7 @@ public class RankWall : MonoBehaviour
         float bz = -halfD + 0.12f, cx = 14.6f, bw = 9.6f;
         var back = Quaternion.LookRotation(Vector3.back); // salondan bakan okur
         var t = g.transform;
-        Gfx.Box("Sira_Pano", t, new Vector3(cx, 4.7f, bz), new Vector3(bw, 5.4f, 0.1f), Gfx.Lit(Panel, 0.85f));
+        Gfx.Box("Sira_Pano", t, new Vector3(cx, 4.7f, bz), new Vector3(bw, 5.4f, 0.1f), Gfx.Lit(Panel, 0.05f)); // mat: lamba yansıması leke yapmasın
         Gfx.Box("Sira_Ust_Serit", t, new Vector3(cx, 7.45f, bz + 0.02f), new Vector3(bw + 0.1f, 0.08f, 0.12f), Gfx.Glow(Gold));
         Gfx.Box("Sira_Alt_Serit", t, new Vector3(cx, 1.98f, bz + 0.02f), new Vector3(bw + 0.1f, 0.06f, 0.12f), Gfx.Glow(Gold * 0.7f));
         float fz = bz + 0.07f;
@@ -81,12 +81,12 @@ public class RankWall : MonoBehaviour
             w.rowL[r] = Gfx.Text("Sira_Satir_" + r, t, new Vector3(cx + bw / 2f - 0.35f, y, fz), back, "", 0.17f, Color.white, TextAnchor.MiddleLeft, TextAlignment.Left);
             w.rowR[r] = Gfx.Text("Sira_Kazanc_" + r, t, new Vector3(cx - bw / 2f + 0.35f, y, fz), back, "", 0.17f, Color.white, TextAnchor.MiddleRight, TextAlignment.Right);
         }
-        w.note = Gfx.Text("Sira_Not", t, new Vector3(cx, 2.2f, fz), back, "", 0.12f, Dim);
+        w.note = Gfx.Text("Sira_Not", t, new Vector3(cx, 2.3f, fz), back, "", 0.2f, Dim);
 
         // ---- Yan (sağ) duvar: kademeler tablosu
         float sx = halfW - 0.12f, sz = -halfD + 5.2f, sw = 7.4f;
         var side = Quaternion.LookRotation(Vector3.right);
-        Gfx.Box("Kademe_Pano", t, new Vector3(sx, 4.5f, sz), new Vector3(0.1f, 4.8f, sw), Gfx.Lit(Panel, 0.85f));
+        Gfx.Box("Kademe_Pano", t, new Vector3(sx, 4.5f, sz), new Vector3(0.1f, 4.8f, sw), Gfx.Lit(Panel, 0.05f));
         Gfx.Box("Kademe_Serit", t, new Vector3(sx - 0.02f, 6.95f, sz), new Vector3(0.12f, 0.08f, sw + 0.1f), Gfx.Glow(Gold));
         float px = sx - 0.07f;
         Gfx.Text("Kademe_Baslik", t, new Vector3(px, 6.55f, sz), side, Loc.T("KADEMELER"), 0.32f, Gold);
@@ -151,7 +151,8 @@ public class RankWall : MonoBehaviour
         if ((cam.transform.position - center).sqrMagnitude > 26f * 26f) return;
         if (!m.Tm || !m.Live)
         {
-            if (note.text == "" || rowL[0].text != "") ShowMessage(m.Tm ? Loc.T("Sıralamayı görmek için Trade of MTBS hesabınla giriş yap.") : Loc.T("Sıralama Trade of MTBS hesabıyla görünür."));
+            string msg = !m.Live ? Loc.T("Sıralamayı görmek için Trade of MTBS hesabınla giriş yap.") : Loc.T("Sıralama Trade of MTBS hesabıyla görünür.");
+            if (note.text != msg) ShowMessage(msg);
             return;
         }
         if (busy) return;

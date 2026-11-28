@@ -43,7 +43,7 @@ public class ChaseCamera : MonoBehaviour
         }
         else if (seated && focus != null)
         {
-            Vector3 pos = focus.position + focus.forward * 0.62f + Vector3.up * 0.03f;
+            Vector3 pos = focus.position + focus.forward * 0.85f + Vector3.up * 0.06f; // ekran çerçevesiyle birlikte görünsün
             float k = 1f - Mathf.Exp(-3.2f * dt);
             transform.position = Vector3.Lerp(transform.position, pos, k);
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(focus.position - pos), k);
