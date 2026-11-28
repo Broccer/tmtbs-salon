@@ -42,7 +42,7 @@ public static class AndroidBuild
         PlayerSettings.SetScriptingBackend(nb, ScriptingImplementation.IL2CPP);
         PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64 | AndroidArchitecture.ARMv7;
         PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel24;
-        PlayerSettings.Android.targetSdkVersion = (AndroidSdkVersions)35;
+        PlayerSettings.Android.targetSdkVersion = (AndroidSdkVersions)36;
         PlayerSettings.Android.forceInternetPermission = true;
         // GameActivity'de TouchScreenKeyboard (e-posta/şifre kutuları) güvenilir açılmıyor: klasik Activity.
         PlayerSettings.Android.applicationEntry = AndroidApplicationEntry.Activity;

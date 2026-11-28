@@ -60,7 +60,7 @@ jobs:
           version: ${{ inputs.version }}
           androidVersionCode: ${{ inputs.code }}
           androidExportType: ${{ matrix.export }}
-          androidTargetSdkVersion: AndroidApiLevel35
+          androidTargetSdkVersion: AndroidApiLevel36
           androidKeystoreName: upload.keystore
           androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
