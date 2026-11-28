@@ -430,9 +430,6 @@ public partial class SalonDirector : MonoBehaviour
         else if (view == View.Register) DrawRegister();
         else DrawGame();
 
-#if UNITY_WEBGL
-        DemoBadge();
-#endif
 
         if (!string.IsNullOrEmpty(banner) && Time.time < bannerUntil)
         {
@@ -737,9 +734,6 @@ public partial class SalonDirector : MonoBehaviour
         BeginPanel(r);
         GUILayout.Label(Tml ? T("TRADE OF MTBS") : T("MÜTEŞEBBİS"), h1);
         LoginLanguage();
-#if UNITY_WEBGL
-        GUILayout.Label(T("<color=#FFB74A><b>3B DEMO</b> · deneme sürümü: hesabın, paran ve hisselerin gerçek oyundakiyle aynıdır</color>"), new GUIStyle(small) { alignment = TextAnchor.MiddleCenter });
-#endif
         GUILayout.Label(Tml ? T("<b>3B Borsa salonu · al-sat, sıralama, düello</b>") : T("<b>3B Dünya · şehir, ev, iş ve borsa</b>"), new GUIStyle(label) { alignment = TextAnchor.MiddleCenter });
         GUILayout.Space(4);
         AccountToggle();
