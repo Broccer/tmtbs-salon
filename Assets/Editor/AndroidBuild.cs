@@ -74,6 +74,8 @@ public static class AndroidBuild
         PlayerSettings.SetApplicationIdentifier(nb, BundleId);
         PlayerSettings.iOS.targetOSVersionString = "13.0";
         PlayerSettings.iOS.appleEnableAutomaticSigning = false;
+        PlayerSettings.iOS.targetDevice = iOSTargetDevice.iPhoneOnly; // iPad ekran görüntüsü gerekmesin
+        PlayerSettings.iOS.appleDeveloperTeamID = "PWNYB7XZ3P";
         string code = WebGLBuild.ArgValue("-buildNumber");
         PlayerSettings.iOS.buildNumber = string.IsNullOrEmpty(code) ? "1" : code;
         string outPath = WebGLBuild.ArgValue("-customBuildPath") ?? "build/iOS/iOS";

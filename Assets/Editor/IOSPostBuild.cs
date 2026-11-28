@@ -23,6 +23,13 @@ public static class IOSPostBuild
         proj.AddFrameworkToProject(main, "AuthenticationServices.framework", false);
         proj.WriteToFile(projPath);
 
+        // İhracat uyumluluğu: yalnız HTTPS (muaf şifreleme) — her yüklemede soru sorulmasın
+        string plistPath = Path.Combine(path, "Info.plist");
+        var plist = new PlistDocument();
+        plist.ReadFromFile(plistPath);
+        plist.root.SetBoolean("ITSAppUsesNonExemptEncryption", false);
+        plist.WriteToFile(plistPath);
+
         var caps = new ProjectCapabilityManager(projPath, "Unity-iPhone/tmtbs3d.entitlements", null, main);
         caps.AddSignInWithApple();
         caps.WriteToFile();

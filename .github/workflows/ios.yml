@@ -1,0 +1,72 @@
+name: iOS Xcode projesi
+
+# Unity iOS çıktısını (Xcode projesi) üretir ve ios-<sürüm>-<kod> sürümüne zip olarak ekler.
+# İmzalama + App Store Connect yüklemesi Broccer/eggs-down "Unity iOS (App Store)" iş akışında (macOS).
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Sürüm adı'
+        default: '1.1.0'
+      code:
+        description: 'Derleme numarası'
+        default: '3'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ios
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: jlumbroso/free-disk-space@v1.3.1
+        with:
+          tool-cache: false
+          android: true
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-iOS-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: Library-iOS-
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Yazı tipini hazırla
+        continue-on-error: true
+        run: |
+          pip install fonttools==4.55.3 brotli
+          mkdir -p Assets/Resources/Fonts
+          python tools/fonts/build_font.py Assets/Resources/Fonts/TmtbsSans.ttf
+      - name: Unity iOS derle
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: iOS
+          buildMethod: AndroidBuild.BuildIOS
+          buildsPath: build
+          buildName: iOS
+          allowDirtyBuild: true
+          versioning: Custom
+          version: ${{ inputs.version }}
+          customParameters: -buildNumber ${{ inputs.code }}
+      - name: Sürüme yükle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sudo chown -R "$(id -u)" build || true
+          ls -la build/iOS || true
+          P=$(dirname "$(find build -name Unity-iPhone.xcodeproj -maxdepth 4 | head -1)")
+          echo "Xcode projesi: $P"
+          (cd "$P" && zip -qry "$GITHUB_WORKSPACE/tmtbs3d-ios-xcode.zip" .)
+          ls -la tmtbs3d-ios-xcode.zip
+          TAG="ios-${{ inputs.version }}-${{ inputs.code }}"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --notes "Trade of MTBS 3D iOS Xcode projesi" --prerelease
+          gh release upload "$TAG" tmtbs3d-ios-xcode.zip --clobber
