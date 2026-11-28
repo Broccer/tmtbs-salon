@@ -17,7 +17,8 @@ public partial class SalonDirector
 
     static readonly string[] TradeTabs = { "Al-Sat", "Defter", "Grafik", "Künye" };
 
-    void OpenTrade(Stock s)
+    /// <summary>Al-sat panelini açar. buy: bankodaki AL (true) / SAT (false) düğmesiyle gelindiyse fiyatı o yöne göre hazırlar.</summary>
+    void OpenTrade(Stock s, bool? buy = null)
     {
         OpenPanelCommon(Panel.Trade);
         trade = s;
@@ -27,7 +28,12 @@ public partial class SalonDirector
         tradeMsg = null;
         chart = null;
         duel = 0;
-        Market.I.LoadDetail(s, () => { if (trade == s) priceText = PxText(DefaultPx(s)); });
+        Market.I.LoadDetail(s, () =>
+        {
+            if (trade != s) return;
+            // SAT ile gelindiyse hemen eşleşecek fiyat en iyi alıştır; satılabilir adet varsa hepsi önerilmez, 1 kalır.
+            priceText = PxText(buy == false ? ClampPx(s, s.bestBid > 0 ? s.bestBid : s.price) : DefaultPx(s));
+        });
         activeDuels.Clear();
         if (Market.I.Tm && Market.I.Live) LoadDuelAccounts();
     }
@@ -285,7 +291,7 @@ public partial class SalonDirector
     float chartHi, chartLo;
 
     /// <summary>Fiyat çizgisi + altında geçişli dolgu + yatay kılavuz çizgileri; bir kez doku olarak çizilir.</summary>
-    Texture2D BuildChartTex(List<object> pts, int w, int h, out float lo, out float hi)
+    public static Texture2D BuildChartTex(List<object> pts, int w, int h, out float lo, out float hi, Color? background = null)
     {
         double l = double.MaxValue, u = double.MinValue;
         foreach (var p in pts) { double f = J.D(p, "f"); if (f < l) l = f; if (f > u) u = f; }
@@ -296,7 +302,7 @@ public partial class SalonDirector
         bool up = J.D(pts[pts.Count - 1], "f") >= J.D(pts[0], "f");
         Color line = up ? new Color(0.25f, 0.92f, 0.5f) : new Color(1f, 0.38f, 0.38f);
         var px = new Color[w * h];
-        var bg = new Color(0, 0, 0, 0);
+        var bg = background ?? new Color(0, 0, 0, 0);
         for (int i = 0; i < px.Length; i++) px[i] = bg;
         // kılavuz çizgileri
         for (int gl = 1; gl < 4; gl++)
